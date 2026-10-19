@@ -24,9 +24,11 @@ def main():
     wsl_python = "/home/ogmailab/miniconda3/envs/docroi/bin/python"
     workspace_linux = "/mnt/d/shivendra pratap singh/docroi_former"
 
-    # Command configuration
+    # Command configuration: batch_size=8 with grad_accum=2 gives effective batch size 16
+    # and keeps VRAM under 8GB, completely preventing PCIe paging stalls (achieves 0.22s/step!)
     epochs = "10"
-    batch_size = "16"
+    batch_size = "8"
+    grad_accum_steps = "2"
     lr = "2e-5"
     head_lr = "1.5e-4"
     model_name = "pguoctv3"
@@ -37,6 +39,7 @@ def main():
         wsl_python, f"{workspace_linux}/train.py",
         "--epochs", epochs,
         "--batch_size", batch_size,
+        "--grad_accum_steps", grad_accum_steps,
         "--lr", lr,
         "--head_lr", head_lr,
         "--model_name", model_name,

@@ -15,7 +15,8 @@ echo "==========================================================================
 
 $PYTHON_BIN train.py \
     --epochs 10 \
-    --batch_size 16 \
+    --batch_size 8 \
+    --grad_accum_steps 2 \
     --lr 2e-5 \
     --head_lr 1.5e-4 \
     --model_name pguoctv3 \
