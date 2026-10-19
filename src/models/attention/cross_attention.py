@@ -31,7 +31,7 @@ class EntityGatedCrossAttention(nn.Module):
         qkv_bias: bool = True,
         attn_drop: float = 0.0,
         proj_drop: float = 0.0,
-        mask_background_value: float = -1e4
+        mask_background_value: float = -4.0
     ):
         super().__init__()
         assert dim % num_heads == 0, f"dim {dim} must be divisible by num_heads {num_heads}"

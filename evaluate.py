@@ -157,9 +157,9 @@ def evaluate_dataset(
 
             prob = float(probs[i]) if probs.ndim > 0 else float(probs)
             pred_mask = pred_masks_sig[i, 0]
-            peak_pixel = float(pred_mask.max())
-            doc_risk_score = max(prob, peak_pixel)
-            is_tampered_pred = bool(doc_risk_score >= threshold)
+            tamper_pixels = int((pred_mask >= threshold).sum())
+            has_tamper_evidence = bool(tamper_pixels >= 35)
+            is_tampered_pred = bool((prob >= threshold) or has_tamper_evidence)
 
             # Confusion classification
             if is_tampered_gt and is_tampered_pred:

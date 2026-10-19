@@ -48,6 +48,7 @@ def parse_args():
     parser.add_argument("--device", type=str, default="cuda", help="Target computing device")
     parser.add_argument("--num_workers", type=int, default=-1, help="DataLoader workers (-1 auto-detects 70% cores on Linux, 2 on Windows)")
     parser.add_argument("--doctamper_only", action="store_true", help="Train strictly on DocTamper LMDB (Stage 1 Foundation Pre-training)")
+    parser.add_argument("--model_name", type=str, default="pguoctv3", help="Model name tag for checkpoint filenames (e.g. pguoctv3)")
     parser.add_argument("--dry_run", action="store_true", help="Quick dry run with 2 batches to verify pipeline")
     return parser.parse_args()
 
@@ -459,7 +460,9 @@ def main():
 
     # 4. Master Training Loop (10 Full Passes)
     best_score = 0.0
-    checkpoint_path = os.path.join(cfg.output_dir, "best_docroi_former_v2_pgu.pth")
+    model_tag = args.model_name
+    checkpoint_path = os.path.join(cfg.output_dir, f"best_docroi_former_{model_tag}.pth")
+    latest_path = os.path.join(cfg.output_dir, f"latest_docroi_former_{model_tag}.pth")
 
     for epoch in range(args.epochs):
         t0 = time.time()
@@ -485,7 +488,6 @@ def main():
               f"LR: {scheduler.get_last_lr()[0]:.6f}")
 
         # Always persist latest checkpoint for resumption
-        latest_path = os.path.join(cfg.output_dir, "latest_docroi_former_v2_pgu.pth")
         torch.save({
             "epoch": epoch + 1,
             "model_state_dict": model.state_dict(),

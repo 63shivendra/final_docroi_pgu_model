@@ -21,7 +21,7 @@ class SemanticRelevanceGate(nn.Module):
     while effectively suppressing harmless margin lighting and dust.
     """
 
-    def __init__(self, channels: int, alpha: float = 0.05):
+    def __init__(self, channels: int, alpha: float = 0.15):
         super().__init__()
         self.channels = channels
         self.alpha = alpha

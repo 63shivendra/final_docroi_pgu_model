@@ -59,9 +59,17 @@ class OtsuEntityTokenizer:
 
     def __call__(self, image_tensor: torch.Tensor) -> torch.Tensor:
         """
-        Convenience wrapper for PyTorch tensors of shape [3, H, W] in [0, 1] or [-1, 1].
+        Convenience wrapper for PyTorch tensors of shape [3, H, W] in [0, 1] or ImageNet normalized.
+        Safely un-normalizes ImageNet tensors to prevent stroke clipping in dark text.
         """
-        # Convert tensor to uint8 numpy
-        img_np = (image_tensor.permute(1, 2, 0).detach().cpu().numpy() * 255.0).clip(0, 255).astype(np.uint8)
+        if image_tensor.min() < -0.05:
+            # Detect ImageNet normalization and un-normalize cleanly
+            mean = torch.tensor([0.485, 0.456, 0.406], device=image_tensor.device).view(3, 1, 1)
+            std = torch.tensor([0.229, 0.224, 0.225], device=image_tensor.device).view(3, 1, 1)
+            t = (image_tensor * std + mean).clamp(0.0, 1.0)
+        else:
+            t = image_tensor.clamp(0.0, 1.0)
+
+        img_np = (t.permute(1, 2, 0).detach().cpu().numpy() * 255.0).astype(np.uint8)
         mask_np = self.extract_entity_mask(img_np)
         return torch.from_numpy(mask_np).unsqueeze(0).to(image_tensor.device)
