@@ -1,0 +1,34 @@
+[
+  {
+    "dataset": "DocTamper-TestingSet",
+    "sample_id": 15,
+    "is_authentic": true,
+    "ground_truth": "CLEAN",
+    "predicted_document_verdict": "TAMPERED",
+    "global_fraud_prob": 99.98787641525269,
+    "gt_pixels": 0,
+    "pred_pixels": 2601,
+    "pixel_iou": 0.0,
+    "pixel_f1": 0.0,
+    "precision": 0.0,
+    "recall": 100.0,
+    "verdict_audit": "CLEAN_FALSE_ALARM",
+    "file": "doctamper_testingset_authentic_clean.png"
+  },
+  {
+    "dataset": "DocTamper-SCD",
+    "sample_id": 15,
+    "is_authentic": true,
+    "ground_truth": "CLEAN",
+    "predicted_document_verdict": "TAMPERED",
+    "global_fraud_prob": 99.97074007987976,
+    "gt_pixels": 0,
+    "pred_pixels": 58,
+    "pixel_iou": 0.0,
+    "pixel_f1": 0.0,
+    "precision": 0.0,
+    "recall": 100.0,
+    "verdict_audit": "CLEAN_FALSE_ALARM",
+    "file": "doctamper_scd_authentic_clean.png"
+  }
+]

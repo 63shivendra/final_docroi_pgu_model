@@ -1,0 +1,36 @@
+{
+  "CASIA_2_0_Splicing": {
+    "dataset_name": "CASIA_2_0_Splicing",
+    "total_evaluated": 12472,
+    "doc_recall": 98.92,
+    "doc_precision": 40.06,
+    "doc_f1": 57.03,
+    "false_alarm_rate": 98.41,
+    "mean_pixel_iou": 6.5,
+    "mean_pixel_f1": 9.13,
+    "mean_latency_ms": 7.11,
+    "confusion_matrix": {
+      "TP": 4927,
+      "TN": 119,
+      "FP": 7372,
+      "FN": 54
+    }
+  },
+  "COCOGLIDE_Generative_Inpainting": {
+    "dataset_name": "COCOGLIDE_Generative_Inpainting",
+    "total_evaluated": 1024,
+    "doc_recall": 99.8,
+    "doc_precision": 50.05,
+    "doc_f1": 66.67,
+    "false_alarm_rate": 99.61,
+    "mean_pixel_iou": 9.02,
+    "mean_pixel_f1": 12.75,
+    "mean_latency_ms": 6.89,
+    "confusion_matrix": {
+      "TP": 511,
+      "TN": 2,
+      "FP": 510,
+      "FN": 1
+    }
+  }
+}

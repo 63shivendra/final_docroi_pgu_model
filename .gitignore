@@ -1,0 +1,73 @@
+# ==========================================
+# STRICT SENSITIVE DATA EXCLUSIONS (Ethics / PII)
+# ==========================================
+Real_dataset_pan_adhaar/
+applied_results/
+test_sample_images/
+*whatsapp*
+*WhatsApp*
+*template*
+*pan*
+*adhaar*
+*aadhaar*
+
+# ==========================================
+# HEAVY DATASETS & RAW FILES (>20GB)
+# ==========================================
+data/
+*.mdb
+*.lmdb
+*.tar
+*.zip
+*.gz
+
+# ==========================================
+# LARGE MODEL WEIGHTS & CHECKPOINTS (>100MB)
+# (GitHub rejects files >100MB)
+# ==========================================
+checkpoints/*.pth
+checkpoints/*.pt
+kaggle_trained_model/
+*.pth
+*.pt
+*.bin
+*.onnx
+
+# ==========================================
+# PYTHON & ENVIRONMENT ARTIFACTS
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ==========================================
+# IDE & SYSTEM ARTIFACTS
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
