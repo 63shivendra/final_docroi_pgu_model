@@ -20,4 +20,5 @@ $PYTHON_BIN train.py \
     --head_lr 1.5e-4 \
     --model_name pguoctv3 \
     --resume "$SCRIPT_DIR/checkpoints/best_docroi_former_v2_pgu.pth" \
+    --doctamper_only \
     "$@"

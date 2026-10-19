@@ -40,7 +40,8 @@ def main():
         "--lr", lr,
         "--head_lr", head_lr,
         "--model_name", model_name,
-        "--resume", resume_ckpt
+        "--resume", resume_ckpt,
+        "--doctamper_only"
     ]
 
     # Pass through any additional CLI arguments (e.g. --doctamper_only or custom epochs)
