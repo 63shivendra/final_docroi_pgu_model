@@ -1,0 +1,36 @@
+{
+  "DocTamper_TestingSet": {
+    "dataset_name": "DocTamper_TestingSet",
+    "total_evaluated": 30000,
+    "doc_recall": 100.0,
+    "doc_precision": 99.76,
+    "doc_f1": 99.88,
+    "false_alarm_rate": 77.17,
+    "mean_pixel_iou": 75.34,
+    "mean_pixel_f1": 80.72,
+    "mean_latency_ms": 7.2,
+    "confusion_matrix": {
+      "TP": 29908,
+      "TN": 21,
+      "FP": 71,
+      "FN": 0
+    }
+  },
+  "DocTamper_SCD": {
+    "dataset_name": "DocTamper_SCD",
+    "total_evaluated": 18000,
+    "doc_recall": 99.98,
+    "doc_precision": 99.67,
+    "doc_f1": 99.82,
+    "false_alarm_rate": 100.0,
+    "mean_pixel_iou": 58.21,
+    "mean_pixel_f1": 67.6,
+    "mean_latency_ms": 7.07,
+    "confusion_matrix": {
+      "TP": 17938,
+      "TN": 0,
+      "FP": 59,
+      "FN": 3
+    }
+  }
+}

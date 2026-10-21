@@ -1,0 +1,62 @@
+[
+  {
+    "name": "ResNet-50 (MVSS-Net Stream)",
+    "params_m": 25.56,
+    "gmacs": 12.14,
+    "lat_bs1_ms": 3.13,
+    "fps_bs1": 319.7,
+    "lat_bs16_ms": 0.7,
+    "fps_bs16": 1427.3,
+    "vram_mb": 413.4
+  },
+  {
+    "name": "Swin-T (DTD Visual Stream)",
+    "params_m": 28.29,
+    "gmacs": 9.26,
+    "lat_bs1_ms": 8.76,
+    "fps_bs1": 114.2,
+    "lat_bs16_ms": 1.37,
+    "fps_bs16": 727.5,
+    "vram_mb": 790.1
+  },
+  {
+    "name": "Swin-B (Swin-Uper Backbone)",
+    "params_m": 87.77,
+    "gmacs": 31.22,
+    "lat_bs1_ms": 16.28,
+    "fps_bs1": 61.4,
+    "lat_bs16_ms": 3.09,
+    "fps_bs16": 323.4,
+    "vram_mb": 1298.9
+  },
+  {
+    "name": "HRNet-W48 (CAT-Net Stream)",
+    "params_m": 75.42,
+    "gmacs": 51.12,
+    "lat_bs1_ms": 28.58,
+    "fps_bs1": 35.0,
+    "lat_bs16_ms": 2.85,
+    "fps_bs16": 351.5,
+    "vram_mb": 1293.0
+  },
+  {
+    "name": "VGG-16 (ManTra-Net Stream)",
+    "params_m": 138.36,
+    "gmacs": 45.38,
+    "lat_bs1_ms": 2.09,
+    "fps_bs1": 478.5,
+    "lat_bs16_ms": 1.69,
+    "fps_bs16": 591.8,
+    "vram_mb": 2582.6
+  },
+  {
+    "name": "DocROI-Former (Ours Full Model)",
+    "params_m": 43.43,
+    "gmacs": 47.42,
+    "lat_bs1_ms": 17.51,
+    "fps_bs1": 57.1,
+    "lat_bs16_ms": 6.53,
+    "fps_bs16": 153.2,
+    "vram_mb": 5817.6
+  }
+]
