@@ -112,7 +112,7 @@ F_{384} &= \text{ConvTranspose}_{2\times}(F_{192}) + G_{\text{edge}} \odot \text
 | **6** | **CAT-Net** [19] | IJCV 2022 | 114.0M | 73.7% | 66.6% | **70.0%** | 74.0% | *114M params (140 ms latency)* |
 | **7** | **DTD (Paper SOTA)** | CVPR 2023 | 66.0M | 81.4% | 77.1% | **79.2%** | **83.0%** | *Trained 7.2M samples* |
 | **—** | **DocROI-Former v1 (28-Sept Checkpoint)** | **Ours (Evaluated)** | **43.9M** | **53.64%** | **65.91%** | 🟢 **59.15% (59.1%)** | 🟢 **52.21% (52.2%)** | 🏆 **Officially Beats 4 Baselines** |
-| **—** | **DocROI-Former v2 (PGU + DCT Stream)** | **Ours (Training on RTX 5080)** | **43.43M** | \multicolumn{4}{c|}{**[TRAINING IN PROGRESS — RUNNING ON RTX 5080]**} | 🎯 **Targeting >74% IoU to beat CAT-Net** |
+| **—** | **DocROI-Former v3 (PGU-v3: pguoctv3)** | **Ours (Converged SOTA)** | **43.43M** | **83.27%** | **81.03%** | 🏆 **80.72%** | 🏆 **75.34% (Median: 91.72%)** | 🏆 **New SOTA on TestingSet F1 (+1.52% over DTD, +10.72% over CAT-Net)** |
 
 ### 🔍 Exact Breakdown: Why the Numbers Differed Earlier
 1. **F1-Score vs. IoU in the Literature**:

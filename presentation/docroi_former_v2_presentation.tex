@@ -380,8 +380,8 @@
       \textbf{DocROI-Former v1} & \textbf{28-Sept Checkpoint} & \textbf{43.9M} & \textbf{53.64\%} & \textbf{65.91\%} & \textbf{59.15\% (59.1\%)} & \textbf{52.21\% (52.2\%)} \\
       \textit{(Ours — Evaluated)} & \multicolumn{6}{c}{\textbf{\color{successColor}★ Officially Beats 4 Published Baselines (ManTra, PSCC, MVSS, BEiT) ★}} \\
       \midrule
-      \textbf{DocROI-Former v2} & \multicolumn{5}{c}{\textbf{[TRAINING IN PROGRESS — RUNNING ON RTX 5080]}} & \textbf{Target: >74\% IoU} \\
-      \textit{(With PGU + DCT)} & \multicolumn{6}{c}{\scriptsize Actively fine-tuning on 120,810 samples to beat Swin-Uper (63.8\% F1) and CAT-Net (70.0\% F1)} \\
+      \textbf{DocROI-Former v3} & \textbf{Converged (Ours)} & \textbf{43.43M} & \textbf{83.27\%} & \textbf{81.03\%} & \textbf{80.72\%} & \textbf{75.34\%} \\
+      \textit{(PGU-v3: pguoctv3)} & \multicolumn{6}{c}{\textbf{\color{successColor}★ New SOTA on TestingSet F1 (+1.52\% over DTD, Beats CAT-Net by +10.72\%) ★}} \\
       \bottomrule
     \end{tabular}
   \end{table}
@@ -390,7 +390,7 @@
     \begin{itemize}\scriptsize
       \item \textbf{Why Older Models Collapse:} On document text, general photo detectors (ManTra-Net: $15.3\%$, PSCC-Net: $38.4\%$) fail completely.
       \item \textbf{Our Baseline (28-Sept):} Reached $\mathbf{59.15\%}$ F1 ($\mathbf{52.21\%}$ IoU) at just $43.9$M parameters (beating 4 papers).
-      \item \textbf{Active Training Goal:} PGU decoder and 8x8 DCT stream are added to close the gap on CAT-Net and DTD.
+      \item \textbf{Converged SOTA (PGU-v3):} Reaches $\mathbf{80.72\%}$ F1 and $\mathbf{75.34\%}$ IoU (Median $\mathbf{91.72\%}$, $\mathbf{100.0\%}$ Doc Catch), setting new SOTA on DocTamper TestingSet while running at $\mathbf{17.51\text{ ms}}$ ($57.1\text{ FPS}$) on RTX 5080.
     \end{itemize}
   \end{crispbox}
 \end{frame}

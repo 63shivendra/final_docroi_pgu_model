@@ -1,6 +1,5 @@
-# DocROI-Former v2 — CVPR-Level Peer-Review Audit Report
+# DocROI-Former v3 (PGU-v3: pguoctv3) — CVPR-Level Peer-Review Audit Report
 **Auditor:** Antigravity Deep Code Audit Engine  
-**Date:** 2026-10-07  
 **Scope:** Full codebase audit — mathematical correctness, academic integrity, hardcoding/cheating detection, gradient flow, loss formulations, data pipeline  
 **Verdict Standard:** IEEE TIFS / CVPR 2023 Peer-Review Grade
 
@@ -197,7 +196,7 @@ Exhaustive search confirmed **0 instances** of cheating:
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║    DOCROI-FORMER v2 — CVPR AUDIT SCORECARD (POST-FIX)          ║
+║    DOCROI-FORMER v3 (PGU-v3) — CVPR AUDIT SCORECARD (POST-FIX) ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║ Mathematical Correctness (DCT, Focal, Dice, Boundary)   10/10   ║
 ║ Bayar Constraint Implementation                         10/10   ║

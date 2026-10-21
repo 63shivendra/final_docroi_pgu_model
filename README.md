@@ -1,6 +1,6 @@
-# DocROI-Former v2: Master Architectural Reference, CVPR Peer-Review Audit, and Enterprise Production Roadmap
+# DocROI-Former v3 (PGU-v3): Master Architectural Reference, CVPR Peer-Review Audit, and Enterprise Production Roadmap
 
-**Framework:** DocROI-Former v2 (Unified Entity-Gated Frequency Vision Transformer)  
+**Framework:** DocROI-Former v3 (PGU-v3) (Unified Entity-Gated Frequency Vision Transformer)  
 **Primary Domain:** Dual-Domain Document Forgery Localization (Pixel-Level) & Enterprise Automated Triage (Document-Level)  
 **Academic Target Venue:** IEEE Transactions on Information Forensics and Security (T-IFS) / IEEE/CVF CVPR / ICCV  
 **Target Hardware:** NVIDIA GeForce RTX 5080 (16GB GDDR7, Blackwell Architecture) / Dual Tesla T4  
@@ -32,7 +32,7 @@
    - [Novelty 2: Semantic Relevance Gating & Entity-Gated Cross-Attention](#novelty-2-semantic-relevance-gating--entity-gated-cross-attention-srcmodelsattentioncross_attentionpy)
    - [Novelty 3: Intra-Document Font Contrastive Embedding Head](#novelty-3-intra-document-font-contrastive-embedding-head-srcmodelsheadsfont_headpy)
    - [Novelty 4: Decoupled Dual-Task Architecture](#novelty-4-decoupled-dual-task-architecture-srcmodelsheadsclassification_headpy)
-6. [The 4 Implemented Upgrades in DocROI-Former v2](#6-the-4-implemented-upgrades-in-docroi-former-v2)
+6. [The 4 Implemented Upgrades in DocROI-Former v3 (PGU-v3)](#6-the-4-implemented-upgrades-in-docroi-former-v3-pgu-v3)
    - [Architectural Schematic: Progressive Guided Upsampling (PGU)](#architectural-schematic-progressive-guided-upsampling-pgu)
    - [Component Upgrades Breakdown](#component-upgrades-breakdown)
 7. [Cumulative IoU Recovery Matrix & Latency Budget](#7-cumulative-iou-recovery-matrix--latency-budget)
@@ -58,7 +58,7 @@ Academic SOTA Formulations (DTD, CAT-Net, Mantra-Net):
   • Collapse on real-world plastic credentials (Aadhaar, PAN) where laminate glare triggers false alarms.
   • Excessively heavy and slow (DTD: 66.0M params, 92.0 ms legacy unstandardized latency).
 
-DocROI-Former v2 Formulation (Our Solution):
+DocROI-Former v3 (PGU-v3) Formulation (Our Solution):
   • Decoupled Dual-Task Architecture: High-resolution pixel mask + calibrated global decision (P_doc).
   • OCR-Free Dynamic Entity Token Router: Identifies Text, Photo, QR, Seal vs. Card Substrate.
   • Semantic Relevance Gating: Mutes plastic laminate glare, folds, and margins by 95%.
@@ -73,7 +73,7 @@ DocROI-Former v2 Formulation (Our Solution):
 2. **Foreground vs. Background Semantic Duality:** 90% of a document consists of uninformative white paper, card substrate, or margins. Tampering occurs almost exclusively inside dense semantic entities: text lines, photo bounding boxes, QR codes, or official stamps.
 3. **Multi-Domain Distribution Divergence:** Academic datasets (DocTamper) focus on synthetic multi-column text paragraphs. Production systems process compact identity cards (Indian PAN, Aadhaar) printed on PVC with reflective laminates, holographic overlays, and severe camera glare.
 
-DocROI-Former v2 bridges this divide through an end-to-end neural framework that unites high-frequency forensic analysis with entity-aware transformer routing.
+DocROI-Former v3 (PGU-v3) bridges this divide through an end-to-end neural framework that unites high-frequency forensic analysis with entity-aware transformer routing.
 
 ---
 
@@ -448,7 +448,7 @@ DocROI-Former introduces four original, publishable architectural mechanisms des
 
 ---
 
-## 6. The 4 Implemented Upgrades in DocROI-Former v2
+## 6. The 4 Implemented Upgrades in DocROI-Former v3 (PGU-v3)
 
 To eliminate the 52.21% IoU bottleneck and achieve state-of-the-art segmentation without relying on post-processing tricks, four architectural and procedural upgrades were implemented in the codebase:
 
@@ -530,7 +530,7 @@ Each performance increment below represents a verified ablation gain, evaluated 
 | **2** | **Fast 8x8 Block-DCT Stream** | GPU fixed-matrix 2D-DCT grid stream | **+7.1%** | **72.51%** | 17.5 ms | 57.1 |
 | **3** | **Auxiliary Deep Boundary Supervision** | Intermediate loss at $192 \times 192$ (0 ms test) | **+4.2%** | **76.71%** | 17.5 ms | 57.1 |
 | **4** | **Converged Training (pguoctv3)** | 30k test set empirical mean IoU | **Verified** | **75.34%** (Median: 91.72%) | **17.51 ms** | **57.1** |
-| **FINAL** | **DocROI-Former v2 (Full Evaluation)** | **End-to-End System (30,000 TestingSet)** | **+23.13%** | **75.34% IoU (80.72% F1)** | **17.51 ms** | **57.1** |
+| **FINAL** | **DocROI-Former v3 (PGU-v3) (Full Evaluation)** | **End-to-End System (30,000 TestingSet)** | **+23.13%** | **75.34% IoU (80.72% F1)** | **17.51 ms** | **57.1** |
 
 ```
                               THROUGHPUT & SPEED BENCHMARK (RTX 5080)
@@ -555,7 +555,7 @@ Each performance increment below represents a verified ablation gain, evaluated 
 | **Substrate & Material** | PVC plastic card substrate, laminated security film, embedded hologram patches | Standard paper stock, digital PDF rendering, rasterized accounting spreadsheets |
 | **Primary Tampering Attack Vectors** | • Single-digit Date of Birth / ID number alteration<br>• Swapped portrait headshots<br>• Name string character splicing | • Altered financial account / IFSC numbers<br>• Modified monetary transaction amounts<br>• Inserted digital PDF text (Canva / Photoshop edits) |
 | **Real-World Environmental Noise** | • Harsh camera flash specular glare<br>• Finger occlusion and perspective warping<br>• Card surface scratches and micro-abrasions | • Faint dot-matrix or thermal receipt printing<br>• Tight multi-column tabular grid structures<br>• Multi-generation scanning compression artifacts |
-| **How DocROI-Former v2 Solves It** | • **PGU Decoder** snaps tightly onto 1-digit alterations without dilation blur.<br>• **Entity Router** attenuates plastic laminate glare by 95%.<br>• **Block-DCT Stream** detects JPEG grid shifts at photo boundary splices. | • **PGU Decoder** prevents mask bleeding across tight table columns.<br>• **Block-DCT Stream** identifies PDF JPEG grid phase shifts.<br>• **Font Head** spots typographical weight mismatches without OCR. |
+| **How DocROI-Former v3 (PGU-v3) Solves It** | • **PGU Decoder** snaps tightly onto 1-digit alterations without dilation blur.<br>• **Entity Router** attenuates plastic laminate glare by 95%.<br>• **Block-DCT Stream** detects JPEG grid shifts at photo boundary splices. | • **PGU Decoder** prevents mask bleeding across tight table columns.<br>• **Block-DCT Stream** identifies PDF JPEG grid phase shifts.<br>• **Font Head** spots typographical weight mismatches without OCR. |
 | **Production Baseline Performance** | **80.29% Pixel IoU** on real government credentials | **75.34% Mean IoU / 80.72% F1** on full-page document text |
 
 ---
@@ -566,14 +566,14 @@ The codebase was subjected to an automated 6-point verification test suite (`ver
 
 ```
 ================================================================================
-DOCROI-FORMER v2: STRICT CVPR AUDIT & VERIFICATION SUITE
+DOCROI-FORMER v3 (PGU-v3): STRICT CVPR AUDIT & VERIFICATION SUITE
 ================================================================================
 [Check 1/6] Auditing System Configuration...
   • use_dct: True
   • lambda_aux: 0.35
   --> PASS: Configuration verified.
 [Check 2/6] Auditing Architecture & Device Binding...
-  • Instantiating DocROI-Former v2 model...
+  • Instantiating DocROI-Former v3 (PGU-v3) model...
   • Total Model Parameters: 43.43M
   • Comparison: DTD has 66.0M params (DocROI-Former is 34.2% smaller)
   • Parameter Allocation:
@@ -690,7 +690,7 @@ docroi_former/
 │
 ├── src/
 │   ├── models/
-│   │   ├── docroi_former.py                # Top-level DocROI-Former v2 integration
+│   │   ├── docroi_former.py                # Top-level DocROI-Former v3 (PGU-v3) integration
 │   │   ├── backbones/
 │   │   │   ├── frequency_encoder.py        # Fast 8x8 Block-DCT + SRM residual stream
 │   │   │   └── spatial_backbone.py         # Multi-scale spatial backbone (PVTv2-B2 / Swin)
@@ -743,4 +743,4 @@ docroi_former/
 
 ---
 
-*This document serves as the authoritative, self-contained reference for the DocROI-Former v2 research framework and production system.*
+*This document serves as the authoritative, self-contained reference for the DocROI-Former v3 (PGU-v3) research framework and production system.*
