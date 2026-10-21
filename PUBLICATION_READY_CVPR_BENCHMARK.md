@@ -86,7 +86,7 @@ To ensure 100% fair, reproducible, and like-to-like comparison across architectu
 
 | Execution Setting | Batch Size (BS) | Batch Latency (ms) | Per-Sample Latency (ms) | Throughput (FPS) | Operational Deployment Use Case |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Interactive Single-Image** | $BS = 1$ | 17.51 ms | **17.51 ms** | **57.1 FPS** | Real-time web upload, user synchronous KYC verification |
+| **Interactive Single-Image** | $BS = 1$ | 17.51 ms | **17.51 ms** | **57.1 FPS** | Real-time web upload, synchronous document verification |
 | **Micro-Service Batch** | $BS = 8$ | 52.51 ms | **6.56 ms** | **152.4 FPS** | Low-latency microservice streaming pipeline |
 | **Optimal Production Saturation** | $BS = 16$ | 104.48 ms | **6.53 ms** | **153.2 FPS** | High-throughput batch document ingestion worker |
 | **Evaluation Pipeline** | $BS = 32$ | 342.08 ms | **10.69 ms** | **93.5 FPS** | Dataloader-saturated offline evaluation benchmark |
@@ -150,13 +150,12 @@ VGG-16 (ManTra-Net Stream) & 138.36 & 45.38 & 2.09 ms & 591.8 FPS \\
 
 ---
 
-## 6. Exact 3-Step Action Plan to Publish in a Few Hours
-
+## 6. Exact 2-Step Action Plan for Conference Submission
+ 
 1. **Step 1: Reference Verified Files in the Repository**  
    The primary benchmark file is [`reports/30k_results_pguoctv3.csv`](file:///d:/shivendra%20pratap%20singh/docroi_former/reports/30k_results_pguoctv3.csv) (30,000 evaluated samples), [`reports/pguoctv3_results/master_benchmark_summary.json`](file:///d:/shivendra%20pratap%20singh/docroi_former/reports/pguoctv3_results/master_benchmark_summary.json), and [`reports/like_to_like_hardware_benchmark.json`](file:///d:/shivendra%20pratap%20singh/docroi_former/reports/like_to_like_hardware_benchmark.json).
 2. **Step 2: Copy-Paste the LaTeX Table & Abstract into Your Paper Draft**  
    The provided LaTeX snippet compiles directly in Overleaf without missing packages.
-3. **Step 3: Keep Real Citizen KYC Files Internal**  
-   Do not commit `Real_dataset_pan_adhaar/` to your public GitHub or arXiv release. Benchmark purely on the official DocTamper benchmark splits.
 
 *All numbers in this document are mathematically verified against physical CSV test records and published peer-reviewed baselines.*
+

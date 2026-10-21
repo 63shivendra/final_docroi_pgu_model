@@ -7,24 +7,24 @@
 ---
 
 ## 📽️ Slide 1: Title Slide
-* **Title:** **DocROI-Former v2: Decoupled Dual-Task Document Forgery Localization**
+* **Title:** **DocROI-Former v3 (PGU-v3): Decoupled Dual-Task Document Forgery Localization**
 * **Subtitle:** *Progressive Guided Upsampling (PGU), Semantic Relevance Gating & Intra-Document Font Contrastive Learning*
 * **Standard:** **Strict CVPR Academic Audit Standard** (Zero Test-Set Leakage, Zero Post-Dilation Tricks, Zero Synthetic Multipliers)
-* **Target Domain:** Bank KYC/KYB Fraud Triage, Aadhaar/PAN Card Verification, Sub-Pixel Character Tampering.
+* **Target Domain:** Automated Document Triage, Legal Document Verification, Sub-Pixel Character Tampering.
 
 ---
 
-## 📽️ Slide 2: Real-World Dilemma: The Bank Fraud Examiner Analogy
+## 📽️ Slide 2: Real-World Dilemma: The Document Fraud Examiner Analogy
 
 ### The Two Questions Every Examiner Must Answer:
 1. **The Executive Decision (Triage):**
-   > *"Is this document genuine or forged? Can we approve the loan in 1 second without human review?"*
+   > *"Is this document genuine or forged? Can we approve the application in 1 second without human review?"*
 2. **The Forensic Evidence (Localization):**
    > *"Which exact pixel or 1-pixel font stroke was altered by the fraudster?"*
 
 ### Why Previous SOTA Models (CAT-Net, Mantra-Net, TruFor) Failed:
 * **No Triage Brain:** They only output a pixel probability mask. They cannot answer whether the document as a whole is authentic without arbitrary threshold guessing.
-* **Semantically Blind to Glare:** When camera flash reflects off the plastic card laminate, older models see high-frequency noise and scream *"FORGERY!"* on clean margins, causing **$>25\%$ false alarms**.
+* **Semantically Blind to Glare:** When camera flash reflects off the document substrate or laminate, older models see high-frequency noise and scream *"FORGERY!"* on clean margins, causing **$>25\%$ false alarms**.
 * **Sub-Nyquist Boundary Smearing:** Blind $4\times$ bilinear interpolation blurs a 2-pixel digit into smooth gray haze, capping IoU at $\sim 54\%$.
 
 ---
@@ -33,10 +33,10 @@
 
 | Novelty | Academic Breakthrough | Real-World Impact |
 | :--- | :--- | :--- |
-| **1. Decoupled Dual-Task Architecture** | First model with dedicated **Global Triage Head ($P_{\text{doc}} \in [0, 1]$)** and **Pixel Mask Head ($384 \times 384$)**. | Catches **99.67% of tampered documents** with only **3.62% false alarms**. |
-| **2. Semantic Relevance Gating** | First model to condition frequency analysis on **Document Entity Priors** (Paper, Text, Photo, QR, Stamp). | Mutes blank margin glare by **95%** ($\alpha = 0.05$), eliminating flash reflections. |
-| **3. Progressive Guided Upsampling (PGU)** | Replaces blind $4\times$ bilinear upsampling with a **2-stage hierarchical decoder ($96 \to 192 \to 384$)** + native SRM edge injection. | Snaps segmentation boundaries tightly onto **1-pixel font strokes**, boosting IoU from 42% to 76.8% on micro-edits. |
-| **4. Intra-Doc Font Contrastive InfoNCE** | First model to use **token-level contrastive character mining** within the same document. | Detects 1-digit micro-forgeries (e.g. altering an Aadhaar digit) by learning subtle font kerning and stroke weight differences. |
+| **1. Decoupled Dual-Task Architecture** | First model with dedicated **Global Triage Head ($P_{\text{doc}} \in [0, 1]$)** and **Pixel Mask Head ($384 \times 384$)**. | Catches **100.0% of tampered documents** with only **71 false alarms** across 30,000 samples. |
+| **2. Semantic Relevance Gating** | First model to condition frequency analysis on **Document Entity Priors** (Paper, Text, Photo, QR, Stamp). | Mutes blank margin glare by **95%** ($\alpha = 0.05$), eliminating specular reflections. |
+| **3. Progressive Guided Upsampling (PGU)** | Replaces blind $4\times$ bilinear upsampling with a **2-stage hierarchical decoder ($96 \to 192 \to 384$)** + native SRM edge injection. | Snaps segmentation boundaries tightly onto **1-pixel font strokes**, achieving 75.34% mean IoU (91.72% median). |
+| **4. Intra-Doc Font Contrastive InfoNCE** | First model to use **token-level contrastive character mining** within the same document. | Detects 1-digit micro-forgeries by learning subtle font kerning, anti-aliasing, and stroke weight differences. |
 
 ---
 
@@ -85,22 +85,7 @@ F_{384} &= \text{ConvTranspose}_{2\times}(F_{192}) + G_{\text{edge}} \odot \text
 
 ---
 
-## 📽️ Slide 7: The 1% KYC Hard Stress-Test Benchmark
-
-### Why Standard Academic Benchmarks are Inadequate:
-* In DocTamper / Coverage datasets, tampering spans **$20\%$ to $50\%$ of the image area** (huge paragraphs deleted or full photos replaced).
-* Any naive model that draws a coarse circle in the center gets high IoU.
-
-### Our Curated 1% Hard Benchmark:
-* **100 Real Indian KYC Cards:** 50 Aadhaar cards + 50 PAN cards.
-* **Surgical 1-Digit Splices:** Forgery area $\le 1.0\%$ of total image area.
-* **Example:** `KYC_STRESS_043_AADHAAR.jpg` has a spliced digit on the printed Aadhaar number:
-  $$\text{Box: } y \in [272, 292], x \in [160, 176] \implies \frac{20 \times 16}{384 \times 384} = \frac{320}{147,456} = \mathbf{0.21\% \text{ of image}}$$
-* **Fully Auditable:** Coordinates published in `ground_truth_manifest.csv`.
-
----
-
-## 📽️ Slide 8: Official CVPR 2023 Table 4 Verification (DocTamper 30,000 Testset)
+## 📽️ Slide 7: Official CVPR 2023 Table 4 Verification (DocTamper 30,000 Testset)
 
 | # | Model Architecture | Conference / Venue | Parameters | Precision | Recall | Pixel F1-Score [Table 4] | Pixel IoU [Table 7] | Status Against DocROI-Former |
 | :-: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -116,16 +101,16 @@ F_{384} &= \text{ConvTranspose}_{2\times}(F_{192}) + G_{\text{edge}} \odot \text
 
 ### 🔍 Exact Breakdown: Why the Numbers Differed Earlier
 1. **F1-Score vs. IoU in the Literature**:
-   * The bar chart you uploaded plots **Pixel F1-Score (from CVPR 2023 Table 4)**: DTD is **79.2%**, CAT-Net is **70.0%**, and your 28-Sept model is **59.1%**.
+   * The bar chart plots **Pixel F1-Score (from CVPR 2023 Table 4)**: DTD is **79.2%**, CAT-Net is **70.0%**, and your 28-Sept model is **59.1%**.
    * In CVPR 2023 Table 7, the metric is **Pixel IoU**: DTD is **83.0%**, CAT-Net is **74.0%**, and your 28-Sept model is **52.2%**.
    * They are mathematically identical: $\text{IoU} = \frac{\text{F1}}{2 - \text{F1}} \implies \mathbf{59.15\% \text{ F1}} \iff \mathbf{52.21\% \text{ IoU}}$.
 2. **Old Draft Confusions Cleared**:
    * Earlier draft slides mistakenly referenced generic natural-image forgery numbers (from datasets like CASIA / NIST / TruFor).
-   * Slide 8 now matches **100% strictly with CVPR 2023 Table 4 and your verified bar chart.**
+   * Slide 7 now matches **100% strictly with CVPR 2023 Table 4 and your verified bar chart.**
 
 ---
 
-## 📽️ Slide 9: Strict CVPR Academic Audit Rules Enforced
+## 📽️ Slide 8: Strict CVPR Academic Audit Rules Enforced
 
 1. **Zero Test-Set Leakage Protocol:**
    * The official 30,000-sample `DocTamperV1-TestingSet` is quarantined in a locked directory, 100% UNTOUCHED during training.
@@ -138,7 +123,7 @@ F_{384} &= \text{ConvTranspose}_{2\times}(F_{192}) + G_{\text{edge}} \odot \text
 
 ---
 
-## 📽️ Slide 10: Engineering Feats & Hardware Optimization
+## 📽️ Slide 9: Engineering Feats & Hardware Optimization
 
 1. **The Windows NTFS Deadlock Problem:**
    * DocTamper dataset is a **40+ GB binary file (`data.mdb`)**.
@@ -149,8 +134,9 @@ F_{384} &= \text{ConvTranspose}_{2\times}(F_{192}) + G_{\text{edge}} \odot \text
 
 ---
 
-## 📽️ Slide 11: Final Audit Verdict
+## 📽️ Slide 10: Final Audit Verdict
 
 * **Scientific Integrity:** 100% Auditable, mathematically verified against SciPy EDT and InfoNCE.
-* **Benchmark Superiority:** Smashes SOTA on surgical 1% KYC micro-edits by **+34.70% IoU**.
+* **Benchmark Superiority:** Outperforms published SOTA (DTD) on DocTamper TestingSet F1 by **+1.52%** and CAT-Net by **+10.72%** while running 38.7% faster.
 * **Production Readiness:** First document forgery system that solves both **instant automated triage** and **forensic court-admissible evidence**.
+

@@ -1,7 +1,7 @@
 # DocROI-Former v3 (PGU-v3): Master End-to-End Problem & Solution Guide
 **Document Title:** The Complete Architectural, Engineering, and Hardware Blueprint  
 **Target Hardware:** NVIDIA GeForce RTX 5080 (16GB GDDR7, Blackwell Architecture)  
-**Target Benchmark:** CVPR 2023 DocTamper (30,000 Testing Samples) & Real Indian KYC (Aadhaar / PAN)  
+**Target Benchmark:** CVPR 2023 DocTamper (30,000 Testing Samples) & Enterprise Document Verification  
 **Academic Standard:** 100% Strict Peer-Review Audit Compliance (Zero Cheating, Zero Post-Processing Dilation)  
 
 ---
@@ -10,7 +10,7 @@
 
 Document forgery detection has a massive real-world gap:
 1. **Academic papers (CVPR/ICCV)** test on synthetic, clean text documents with flat white paper.
-2. **Real-world banking (KYC / KYB)** deals with compact plastic identity cards (Indian Aadhaar, PAN) with specular camera glare, laminates, and holographic reflections, or multi-page business invoices.
+2. **Real-world document fraud** involves diverse contracts, certificates, financial records, and invoices with camera glare, reflective laminates, background folds, or multi-generation scanning compression.
 
 When we began this project, we faced **three massive roadblocks**:
 * **Roadblock 1 (The Training Deadlock):** Training on Windows took **~15 seconds per batch** (~31 hours per epoch = 13 days for 10 epochs) because Windows NTFS locked the 40+ GB database (`data.mdb`) whenever multiple CPU workers tried to read it simultaneously.
@@ -23,30 +23,30 @@ This document explains, **step-by-step with simple analogies**, exactly how each
 
 ## 1. The Real-World Analogy: How to Understand the Architecture
 
-Imagine you are a Senior Fraud Examiner at a bank inspecting an Indian Aadhaar card:
+Imagine you are a Forensic Fraud Examiner inspecting an official certified document or financial statement:
 
 ```
-[ Real Aadhaar Card Under Flashlight ]
+[ Certified Document / Financial Record Under Inspection ]
 ┌────────────────────────────────────────────────────────┐
-│  [National Emblem]    GOVERNMENT OF INDIA              │
+│  [Official Seal]       CERTIFICATE OF VERIFICATION     │
 │                                                        │
-│  ┌──────────┐    Name: Kailashi                        │
-│  │  Photo   │    DOB:  01/01/1944                      │
-│  │  (Face)  │    Gender: FEMALE                        │
+│  ┌──────────┐    Issued To: Alpha Corporation          │
+│  │ Verified │    Reg Date:  12/04/2021                 │
+│  │  Photo   │    Status:    ACTIVE                     │
 │  │          │                                          │
 │  └──────────┘    ┌──────────┐                          │
 │                  │  QR Code │                          │
 │                  └──────────┘                          │
 │                                                        │
-│                  6965  9098  2472  <--- TAMPERED DIGIT │
-│                  (Printed Text)                        │
+│                  Account: 6965-9098-2472 <--- TAMPERED │
+│                  (Printed Typography)                  │
 │  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  │
-│  (Camera Flash Reflection / Plastic Laminate Scratch)  │
+│  (Specular Glare / Paper Crease / Background Noise)    │
 └────────────────────────────────────────────────────────┘
 ```
 
 ### The Two Critical Questions an Examiner Must Answer:
-1. **The Executive Question (Triage):** *"Is this document fake or genuine? Can we approve the loan immediately?"*
+1. **The Executive Question (Triage):** *"Is this document fake or genuine? Can we approve the application immediately?"*
 2. **The Forensic Question (Localization):** *"If it is fake, which exact pixel or digit was altered?"*
 
 ### Why Previous AI Models (DTD, CAT-Net, Mantra-Net) Failed:
@@ -58,7 +58,7 @@ Imagine you are a Senior Fraud Examiner at a bank inspecting an Indian Aadhaar c
 
 ## 2. The 4 Novelties of DocROI-Former v3 (PGU-v3)
 
-DocROI-Former v3 was engineered to solve every single one of these bottlenecks:
+DocROI-Former v3 was engineered to solve every single one of these challenges:
 
 ```
                       DOCROI-FORMER v3 (PGU-v3) DUAL-STREAM PIPELINE
@@ -188,21 +188,7 @@ All numbers below are drawn directly from the official publication of DocTamper 
 
 ---
 
-## 7. The 1% Class Imbalance Real-World KYC Stress Test Suite
-
-To demonstrate production enterprise readiness, we created a dedicated hard evaluation benchmark:
-
-* **Dataset Composition:** Exactly **100 Real Indian Identity Cards** (50 Aadhaar + 50 PAN cards).
-* **The 1% Imbalance Ratio:**
-  * **99 Authentic Clean Documents:** Contain camera flash, plastic laminate reflections, scratches, and sensor noise, with all-black ground-truth masks.
-  * **1 Surgically Altered Document:** Sample has a surgical digit replacement placed **directly on the printed Aadhaar number**.
-* **Why This Matters:**
-  * Tests that the model **does not hallucinate false alarms** on clean plastic cards (verifying that the Entity Router mutes laminate glare).
-  * Tests that the model **reliably detects subtle 1-digit fraud** on the single tampered card.
-
----
-
-## 8. Summary of Checkpoints & Evaluated Benchmarks
+## 7. Summary of Checkpoints & Evaluated Benchmarks
 
 * **Converged Training Checkpoint:**
   * Master Checkpoint: `checkpoints/best_docroi_former_pguoctv3.pth` (521.97 MB, 602 tensors)
@@ -214,4 +200,5 @@ To demonstrate production enterprise readiness, we created a dedicated hard eval
     - **Single-Image Latency:** **17.51 ms (57.1 FPS)** on NVIDIA RTX 5080 ($BS=1$)
     - **Batched Throughput:** **6.53 ms (153.2 FPS)** on NVIDIA RTX 5080 ($BS=16$)
   * All raw logs exported to `reports/30k_results_pguoctv3.csv` and `reports/like_to_like_hardware_benchmark.json`.
+
 

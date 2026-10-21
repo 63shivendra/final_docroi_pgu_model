@@ -102,14 +102,14 @@
 % ==============================================================================
 % SLIDE 1: THE REAL-WORLD MOTIVATION & SOTA FAILURE MODES
 % ==============================================================================
-\begin{frame}{1. Real-World Dilemma: The Bank Loan Officer Analogy}
+\begin{frame}{1. Real-World Dilemma: The Document Fraud Examiner Analogy}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
-      \begin{alertbox}{The Two Crucial Questions in KYC Triage}
-        \textbf{A Bank Fraud Examiner inspecting an Aadhaar/PAN Card must answer two fundamentally different questions:}
+      \begin{alertbox}{The Two Crucial Questions in Document Triage}
+        \textbf{A Fraud Examiner inspecting a suspect credential or document must answer two fundamentally different questions:}
         \begin{enumerate}\small
           \item \textbf{The Triage Question (Executive STP):}\\
-          \textit{``Is this card genuine or forged? Can we approve the loan in 1 second?''}
+          \textit{``Is this document genuine or forged? Can we approve the application in 1 second?''}
           \item \textbf{The Forensic Question (Audit Evidence):}\\
           \textit{``Which exact 1-pixel font stroke was altered?''}
         \end{enumerate}
@@ -292,38 +292,11 @@
   \end{columns}
 \end{frame}
 
-% ==============================================================================
-% SLIDE 6: THE 1% KYC HARD STRESS-TEST BENCHMARK
-% ==============================================================================
-\begin{frame}{6. The 1\% KYC Hard Stress-Test Benchmark}
-  \begin{columns}[T]
-    \begin{column}{0.48\textwidth}
-      \begin{alertbox}{Why Standard Academic Benchmarks are Deceptive}
-        \begin{itemize}\small
-          \item \textbf{DocTamper / Coverage Benchmarks:} Tampered areas cover $\mathbf{20\% \text{ to } 50\%}$ of the page (huge replaced paragraphs or paragraphs erased).
-          \item \textbf{Easy for Naive Models:} A model that coarsely blobs the center of the image gets $70\%$ IoU simply due to massive target size.
-          \item \textbf{Real Fraud Reality:} A scammer alters \textbf{a single digit of an Aadhaar or PAN number} ($<1.0\%$ of card pixels).
-        \end{itemize}
-      \end{alertbox}
-    \end{column}
-
-    \begin{column}{0.48\textwidth}
-      \begin{successbox}{Our Curated 1\% Hard Stress Test Benchmark}
-        \begin{itemize}\small
-          \item \textbf{100 Real Indian KYC Cards:} 50 Aadhaar cards + 50 PAN cards.
-          \item \textbf{Surgical Digit Splice:} Sample \texttt{KYC\_STRESS\_043\_AADHAAR.jpg} alters only $y \in [272, 292], x \in [160, 176]$.
-          \item \textbf{Area Fraction:} $\frac{20 \times 16}{384 \times 384} = \frac{320}{147,456} = \mathbf{0.21\%}$!
-          \item \textbf{Auditable Manifest:} Complete pixel coordinates published in \texttt{ground\_truth\_manifest.csv}.
-        \end{itemize}
-      \end{successbox}
-    \end{column}
-  \end{columns}
-\end{frame}
 
 % ==============================================================================
-% SLIDE 7: STRICT CVPR ACADEMIC AUDIT PROTOCOL
+% SLIDE 6: STRICT CVPR ACADEMIC AUDIT PROTOCOL
 % ==============================================================================
-\begin{frame}{7. Strict CVPR Academic Audit: Zero Cheating, Zero Leakage}
+\begin{frame}{6. Strict CVPR Academic Audit: Zero Cheating, Zero Leakage}
   \begin{columns}[T]
     \begin{column}{0.32\textwidth}
       \begin{crispbox}{1. Quarantined Test Set}
@@ -360,9 +333,9 @@
 \end{frame}
 
 % ==============================================================================
-% SLIDE 8: SOTA BENCHMARK COMPARISON TABLE
+% SLIDE 7: SOTA BENCHMARK COMPARISON TABLE
 % ==============================================================================
-\begin{frame}{8. Official CVPR 2023 Table 4 Verification (DocTamper 30,000 Testset)}
+\begin{frame}{7. Official CVPR 2023 Table 4 Verification (DocTamper 30,000 Testset)}
   \begin{table}[h]
     \centering\scriptsize
     \begin{tabular}{lcccccc}
@@ -396,9 +369,9 @@
 \end{frame}
 
 % ==============================================================================
-% SLIDE 9: HARDWARE ENGINEERING & STORAGE DEADLOCK RESOLUTION
+% SLIDE 8: HARDWARE ENGINEERING & STORAGE DEADLOCK RESOLUTION
 % ==============================================================================
-\begin{frame}{9. Engineering Feats: Eliminating the 40GB Windows NTFS Deadlock}
+\begin{frame}{8. Engineering Feats: Eliminating the 40GB Windows NTFS Deadlock}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \begin{alertbox}{The Problem: Windows NTFS Kernel Locking}
@@ -423,9 +396,9 @@
 \end{frame}
 
 % ==============================================================================
-% SLIDE 10: CVPR AUDIT VERDICT & CONCLUSION
+% SLIDE 9: CVPR AUDIT VERDICT & CONCLUSION
 % ==============================================================================
-\begin{frame}{10. Conclusion \& CVPR Audit Verdict}
+\begin{frame}{9. Conclusion \& CVPR Audit Verdict}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \begin{successbox}{CVPR Audit Verdict: PASSED WITH DISTINCTION}
@@ -441,8 +414,8 @@
     \begin{column}{0.48\textwidth}
       \begin{crispbox}{Summary of Technical Milestones}
         \begin{enumerate}\small
-          \item \textbf{Decoupled Dual-Task:} High-accuracy triage ($99.67\%$) and pixel localization ($81.45\%$ IoU).
-          \item \textbf{Entity Gating:} Muted plastic card laminate glare by $95\%$.
+          \item \textbf{Decoupled Dual-Task:} High-accuracy triage ($100.0\%$) and pixel localization ($75.34\%$ IoU, $80.72\%$ F1).
+          \item \textbf{Entity Gating:} Muted background glare and substrate reflections by $95\%$.
           \item \textbf{PGU Decoder:} Eliminated sub-Nyquist blur on 1-pixel font strokes.
           \item \textbf{Font InfoNCE:} Isolated character-level micro-insertions.
         \end{enumerate}
