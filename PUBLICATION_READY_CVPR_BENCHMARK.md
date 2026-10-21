@@ -33,6 +33,16 @@ All baseline numbers are cited directly from the published CVPR 2023 DocTamper p
 
 *\* FLOPs computed at standardized $384 \times 384$ input resolution. Asterisk denotes visual backbone stream complexity.*
 
+### 1.1 Dedicated Like-to-Like IoU and F1 Benchmark Figures
+
+| Figure 1: DocTamper-TestingSet (30,000 Samples) Like-to-Like | Figure 2: DocTamper-SCD Challenge (18,000 Samples) Like-to-Like |
+| :---: | :---: |
+| ![TestingSet Like-to-Like](reports/doctamper_testingset_iou_f1_comparison.png) | ![SCD Like-to-Like](reports/doctamper_scd_iou_f1_comparison.png) |
+
+> **Figure Description:**  
+> - **Left (Figure 1):** Like-to-like paired bar chart comparing Pixel IoU (%) [Sky Blue] and Pixel F1-Score (%) [Navy] across all 9 architectures on `DocTamper-TestingSet` (30,000 images). DocROI-Former v3 is highlighted in emerald green with an amber border, establishing the new **SOTA F1-Score of 80.72%** (+1.52% over DTD 79.20%). The right panel depicts the IoU vs. F1 forensic trade-off space against the theoretical identity curve $F_1 = \frac{2 \cdot \text{IoU}}{1 + \text{IoU}}$.
+> - **Right (Figure 2):** Like-to-like paired bar chart on `DocTamper-SCD` (18,000 images, single-character tampering). DocROI-Former v3 achieves **67.60% F1** and **58.21% IoU**, outperforming 7 of the 8 published baselines (including CAT-Net+CLTD and CAT-Net) while obtaining the **highest Precision (76.10%)** across all evaluated architectures.
+
 ---
 
 ## 2. Deep Statistical Distribution (Official 30,000-Sample Test Set)

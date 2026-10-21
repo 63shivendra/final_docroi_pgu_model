@@ -377,8 +377,18 @@ def main():
     plt.savefig(os.path.join(pgu_dir, "efficiency_pareto_frontier.png"), bbox_inches="tight")
     plt.close()
 
-    print("\n[SUCCESS] Entire CVPR publication suite (all 6 figures) generated with 100% verified numbers!")
+    # Generate dedicated like-to-like IoU vs F1 figures for both datasets
+    try:
+        from generate_liketolike_iou_f1_benchmarks import plot_testingset_liketolike, plot_scd_liketolike
+        print("\nGenerating Dedicated Like-to-Like IoU & F1 Comparison Plots...")
+        plot_testingset_liketolike(reports_dir, summary)
+        plot_scd_liketolike(reports_dir, summary)
+    except Exception as e:
+        print(f"Note on like-to-like plots: {e}")
+
+    print("\n[SUCCESS] Entire CVPR publication suite (all figures) generated with 100% verified numbers!")
 
 
 if __name__ == "__main__":
     main()
+

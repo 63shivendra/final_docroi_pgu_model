@@ -220,9 +220,9 @@ To ensure 100% fair, reproducible, and like-to-like comparison across architectu
 
 All figures are generated strictly from dynamic ground-truth evaluation CSVs and empirical hardware benchmarks at **300 DPI IEEE/CVF publication quality**:
 
-| Figure 1: TestingSet Benchmark (F1 & IoU Ascending) | Figure 2: SCD Zero-Shot Benchmark (Ascending) |
+| Figure 1: TestingSet Dedicated Like-to-Like IoU & F1 Benchmark | Figure 2: SCD Challenge Dedicated Like-to-Like IoU & F1 Benchmark |
 | :---: | :---: |
-| ![DocTamper TestingSet](reports/doctamper_testingset_comparison.png) | ![DocTamper SCD](reports/doctamper_scd_comparison.png) |
+| ![DocTamper TestingSet](reports/doctamper_testingset_iou_f1_comparison.png) | ![DocTamper SCD](reports/doctamper_scd_iou_f1_comparison.png) |
 
 | Figure 3: Model Parameters Comparison (Ascending) | Figure 4: Like-to-Like Latency & Throughput |
 | :---: | :---: |
@@ -609,9 +609,11 @@ docroi_former/
 ├── reports/
 │   ├── 30k_results_pguoctv3.csv            # Full 30,000-sample empirical evaluation results
 │   ├── like_to_like_hardware_benchmark.json# RTX 5080 empirical profiles across all models
-│   ├── doctamper_testingset_comparison.png # 300 DPI publication figure: TestingSet comparison
-│   ├── doctamper_scd_comparison.png        # 300 DPI publication figure: SCD zero-shot comparison
-│   ├── model_parameters_comparison.png     # 300 DPI publication figure: Model size ascending
+│   ├── doctamper_testingset_iou_f1_comparison.png # 300 DPI publication figure: TestingSet like-to-like IoU & F1
+│   ├── doctamper_scd_iou_f1_comparison.png        # 300 DPI publication figure: SCD like-to-like IoU & F1
+│   ├── doctamper_testingset_comparison.png        # 300 DPI publication figure: TestingSet dual-panel comparison
+│   ├── doctamper_scd_comparison.png               # 300 DPI publication figure: SCD dual-panel comparison
+│   ├── model_parameters_comparison.png            # 300 DPI publication figure: Model size ascending
 │   ├── latency_and_throughput_benchmark.png# 300 DPI publication figure: RTX 5080 like-to-like speed
 │   ├── efficiency_pareto_frontier.png      # 300 DPI publication figure: Params vs F1 Pareto
 │   └── comprehensive_radar_comparison.png  # 300 DPI publication figure: Multi-metric radar
