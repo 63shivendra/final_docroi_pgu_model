@@ -7,9 +7,20 @@ test_sample_images/
 *whatsapp*
 *WhatsApp*
 *template*
-*pan*
-*adhaar*
-*aadhaar*
+*pan*.jpg
+*pan*.png
+*pan*.jpeg
+*adhaar*.jpg
+*adhaar*.png
+*aadhaar*.jpg
+*aadhaar*.png
+
+# Test outputs and scratch
+scratch/
+reports/*_test_output/
+
+# Ensure all source code is always tracked
+!src/**
 
 # ==========================================
 # HEAVY DATASETS & RAW FILES (>20GB)

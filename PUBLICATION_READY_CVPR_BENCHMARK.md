@@ -29,9 +29,14 @@ All baseline numbers are cited directly from the published CVPR 2023 DocTamper p
 | **6** | **CAT-Net (Original)** | IJCV 2022 | **114.0 M** | 51.1 G* | 73.7% | 66.6% | **70.00%** | 74.0% | 63.10% | 🏆 **+10.72% F1 (2.6× smaller)** |
 | **7** | **CAT-Net + CLTD** | CVPR 2023 | 114.0 M | 51.1 G* | 76.8% | 68.0% | **72.10%** | 71.0% | 67.00% | 🏆 **+8.62% F1 (Ours beats on SCD too)** |
 | **8** | **DTD (Paper SOTA)** | CVPR 2023 | 66.0 M | 24.8 G* | **81.4%** | 77.1% | **79.20%** | **83.0%** | **75.40%** | ⚖️ **Reference Published SOTA** |
-| **—** | **DocROI-Former (Ours)** | **This Work** | **43.43 M** | **47.42 G** | **83.27%** | **81.03%** | **80.72%** | **75.34%** | **67.60%** | 🏆 **New SOTA on TestingSet F1 (+1.52% over DTD, 34.2% lighter)** |
+| **—** | **DocROI-Former (Ours)** | **This Work** | **43.43 M** | **47.42 G** | **83.27%** | **81.03%** | **80.72%** | **75.34%** | **67.60%** | 🏆 **SOTA F1 on TestingSet (+1.52% vs DTD, 34.2% lighter); DTD retains IoU & SCD lead** |
 
 *\* FLOPs computed at standardized $384 \times 384$ input resolution. Asterisk denotes visual backbone stream complexity.*
+
+> **Balanced Scientific Trade-Off Analysis (CVPR Review-Ready):**  
+> - **TestingSet F1 & Parameter Efficiency:** DocROI-Former establishes the highest published Pixel F1-Score on the official 30,000-sample `DocTamper-TestingSet` (**80.72%**, +1.52% higher than DTD 79.20%) while reducing parameter count by **34.2%** (43.43M vs. 66.0M). It surpasses 7 of the 8 published baselines across both F1 and IoU (including Swin-Uper, CAT-Net, and CAT-Net+CLTD).
+> - **IoU & Single-Character (SCD) Nuance:** On strict pixel-level boundary overlap (IoU), DTD (CVPR 2023) maintains higher scores on TestingSet (83.00% vs. 75.34%) and on the single-character manipulation challenge `DocTamper-SCD` (75.40% F1, 69.00% IoU vs. 67.60% F1, 58.21% IoU). DocROI-Former establishes the **optimal Pareto efficiency frontier** between lightweight parameter footprint and character-level tampering recall.
+
 
 ### 1.1 Dedicated Like-to-Like IoU and F1 Benchmark Figures
 
@@ -64,10 +69,11 @@ This table demonstrates the high-precision character boundary snapping capabilit
   - $\text{IoU} \ge 80\%$: **67.35%** of samples (20,138 images).
   - $\text{IoU} \ge 50\%$: **80.42%** of samples (24,054 images).
   - Complete Misses ($\text{IoU} = 0\%$): Only **8.51%** (2,553 images, predominantly microscopic single-digit substitutions).
-* **Document Level Classification:**
+* **Document Level Classification (High-Sensitivity Triage Operating Point):**
   - **Catch Rate (Recall):** **100.00%** (29,908 / 29,908 tampered documents detected, $FN=0$).
   - **Document Precision:** **99.76%** ($TP=29,908, FP=71$).
   - **Document F1-Score:** **99.88%**.
+  - **Class Distribution & False Alarm Nuance:** The official DocTamper-TestingSet contains 29,908 tampered documents and 92 authentic clean documents. Under high-sensitivity triage calibration (tuned for zero missed fraud, $FN=0$), the model successfully catches all 29,908 tampered documents with 71 false alarms on the small authentic subset ($FP=71, TN=21$, yielding a 77.17% false positive rate on negatives). In production environments, practitioners can calibrate the decision threshold along the ROC/PR curve to trade off between zero-miss forensic triage and conservative false-alarm escalation.
 
 ---
 
@@ -108,7 +114,7 @@ To ensure 100% fair, reproducible, and like-to-like comparison across architectu
 ```latex
 \begin{table*}[t]
 \centering
-\caption{\textbf{Quantitative comparison on DocTamper-TestingSet (30,000 samples) and DocTamper-SCD (18,000 samples) under multi-round JPEG recompression.} Baselines are drawn verbatim from published CVPR 2023 Table 4 and Table 7 (Qu et al.). DocROI-Former establishes a new SOTA Pixel F1-Score of 80.72\% on TestingSet (+1.52\% over DTD) while reducing parameter overhead by 34.2\%.}
+\caption{\textbf{Quantitative comparison on DocTamper-TestingSet (30,000 samples) and DocTamper-SCD (18,000 samples).} Baselines are drawn verbatim from published CVPR 2023 Table 4 and Table 7 (Qu et al.). DocROI-Former achieves the top Pixel F1-Score of 80.72\% on TestingSet (+1.52\% over DTD) with 34.2\% fewer parameters, while DTD leads on pixel IoU and SCD single-character manipulation.}
 \label{tab:main_results}
 \resizebox{\textwidth}{!}{
 \begin{tabular}{lcccccccc}

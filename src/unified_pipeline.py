@@ -32,9 +32,10 @@ from src.core.vision_preprocessor import (
     RectificationResult
 )
 from src.layer2.document_validator_registry import UnifiedStructuralAuditEngine
-from src.layer2.base import DocumentValidationReport, SeverityLevel
+from src.layer2.base import DocumentValidationReport, SeverityLevel, ValidationCheckResult
 from src.governance.trust_receipt import TrustReceiptEngine
 from src.core.domain_entities import DocumentTrustReceipt
+from src.core.document_classifier import DocumentClassifier, DocumentClassificationResult, DocumentCategory
 
 try:
     import easyocr
@@ -43,11 +44,12 @@ except ImportError:
     HAS_EASYOCR = False
 
 
+
 @dataclass
 class UnifiedAuditResult:
     """Master container returned by the UnifiedDocumentFraudPipeline."""
     document_name: str
-    decision: str                      # 'APPROVED', 'ESCALATE_TO_HUMAN_REVIEW', 'REJECTED'
+    decision: str                      # 'APPROVED', 'ESCALATE_TO_HUMAN_REVIEW', 'REJECTED', 'REJECTED_WRONG_DOCUMENT_TYPE'
     trust_score: float                 # In [0.0, 1.0] (1.0 = absolute authentic trust)
     risk_score: float                  # In [0.0, 1.0]
     rectification: RectificationResult
@@ -55,6 +57,7 @@ class UnifiedAuditResult:
     structural_report: DocumentValidationReport
     neural_metrics: Dict[str, Any]
     trust_receipt: Dict[str, Any]
+    classification: Optional[Dict[str, Any]] = None
     clean_heatmap: Optional[np.ndarray] = None
     evidence_board_path: Optional[str] = None
 
@@ -71,6 +74,7 @@ class UnifiedAuditResult:
                 "background_ratio_removed": round(self.rectification.background_ratio_removed, 4)
             },
             "extracted_fields": self.extracted_fields,
+            "classification": self.classification,
             "structural_audit": self.structural_report.to_dict(),
             "neural_vision": self.neural_metrics,
             "trust_receipt": self.trust_receipt,
@@ -92,10 +96,11 @@ class UnifiedDocumentFraudPipeline:
         self.device = device
         self.config = config or DocROIConfig()
         
-        # 1. Vision Preprocessors
+        # 1. Vision Preprocessors & Intake Gatekeeper
         self.rectifier = DocumentRectifier()
         self.guardband = PerimeterGuardband()
         self.roi_masker = SemanticRoIMasker()
+        self.classifier = DocumentClassifier()
 
         # 2. Structural & Cryptographic Audit Engine (Layer 2 & 3)
         self.structural_engine = UnifiedStructuralAuditEngine()
@@ -175,41 +180,130 @@ class UnifiedDocumentFraudPipeline:
         # -------------------------------------------------------------
         extracted_fields = manual_fields.copy() if manual_fields else {}
         entity_boxes = []
+        ocr_texts = []
 
         if self.ocr_reader is not None:
             try:
-                ocr_results = self.ocr_reader.readtext(rectified_card)
-                ocr_texts = []
+                # Multi-scale OCR handling for low-resolution document captures
+                scale = max(1.0, 720.0 / min(h_card, w_card))
+                if scale > 1.0:
+                    scaled_card = cv2.resize(rectified_card, (int(w_card * scale), int(h_card * scale)), interpolation=cv2.INTER_CUBIC)
+                else:
+                    scaled_card = rectified_card
+
+                ocr_results = self.ocr_reader.readtext(scaled_card)
                 for (bbox, text, prob) in ocr_results:
                     ocr_texts.append(text)
-                    # Convert 4-point polygon to [x, y, w, h]
-                    pts = np.array(bbox, dtype=np.int32)
+                    # Convert 4-point polygon to [x, y, w, h] mapped back to rectified_card scale
+                    pts = np.array([[int(pt[0] / scale), int(pt[1] / scale)] for pt in bbox], dtype=np.int32)
                     bx, by, bw, bh = cv2.boundingRect(pts)
                     entity_boxes.append((bx, by, bw, bh))
 
                 # Auto-parse standard ID patterns if not provided manually
-                full_text = " ".join(ocr_texts)
+                full_text_upper = " ".join(ocr_texts).upper()
+                import re
+
+                # 1. PAN Card Auto-Discovery
                 if "pan" not in extracted_fields and "pan_number" not in extracted_fields:
-                    import re
-                    pan_match = re.search(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b', full_text)
+                    pan_match = re.search(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b', full_text_upper)
                     if pan_match:
+                        extracted_fields["pan_number"] = pan_match.group(0)
                         extracted_fields["pan"] = pan_match.group(0)
 
+                # 2. Aadhaar Auto-Discovery (12 digits starting with 2-9)
+                if "aadhaar" not in extracted_fields and "aadhaar_number" not in extracted_fields:
+                    aadhaar_match = re.search(r'\b[2-9]{1}[0-9]{3}\s?[0-9]{4}\s?[0-9]{4}\b', full_text_upper)
+                    if aadhaar_match:
+                        extracted_fields["aadhaar_number"] = aadhaar_match.group(0)
+
+                # 3. GSTIN Auto-Discovery (15 chars)
+                if "gstin" not in extracted_fields:
+                    gstin_match = re.search(r'\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]\b', full_text_upper)
+                    if gstin_match:
+                        extracted_fields["gstin"] = gstin_match.group(0)
+
+                # 4. Name Auto-Discovery
                 if "name" not in extracted_fields:
-                    # Look for text following 'Name'
                     for i, t in enumerate(ocr_texts):
                         if "name" in t.lower() and i + 1 < len(ocr_texts):
                             extracted_fields["name"] = ocr_texts[i+1].strip()
                             break
 
+                # 5. Date of Birth Auto-Discovery
                 if "dob" not in extracted_fields:
-                    import re
-                    dob_match = re.search(r'\b\d{2}/\d{2}/\d{4}\b', full_text)
+                    dob_match = re.search(r'\b\d{2}/\d{2}/\d{4}\b', full_text_upper)
                     if dob_match:
                         extracted_fields["dob"] = dob_match.group(0)
 
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[Warning] OCR extraction encountered error: {e}")
+
+        # -------------------------------------------------------------
+        # STEP 2.5: DOCUMENT CLASSIFICATION & INTAKE GATEKEEPER (Step 0)
+        # -------------------------------------------------------------
+        classification = self.classifier.classify(
+            image=rectified_card,
+            ocr_texts=ocr_texts,
+            requested_doc_type=doc_type
+        )
+
+        # If doc_type was not specified, dynamically route to detected category
+        if not doc_type and classification.detected_category != DocumentCategory.UNKNOWN:
+            doc_type = classification.detected_category.value
+
+        # Fast-fail gate: If requested document does not match uploaded document
+        if doc_type and not classification.is_matching_requested:
+            decision = "REJECTED_WRONG_DOCUMENT_TYPE"
+            risk_score = 1.0
+            trust_score = 0.0
+
+            fail_check = ValidationCheckResult(
+                check_name="INTAKE_GATEKEEPER_MATCH",
+                passed=False,
+                severity=SeverityLevel.CRITICAL,
+                reason_code="DOCUMENT_CATEGORY_MISMATCH",
+                detail=classification.rejection_reason or f"Uploaded document does not match requested '{doc_type}'."
+            )
+            fast_fail_report = DocumentValidationReport(
+                document_type=doc_type,
+                is_structurally_valid=False,
+                structural_integrity_score=0.0,
+                critical_violations_count=1,
+                warning_violations_count=0,
+                checks=[fail_check],
+                metadata={"intake_gatekeeper": classification.to_dict()}
+            )
+
+            raw_bytes = cv2.imencode('.png', raw_img)[1].tobytes()
+            receipt_dict = self.receipt_engine.generate_receipt(
+                image_bytes=raw_bytes,
+                document_type=doc_type,
+                global_risk_score=risk_score,
+                pixel_mask=None,
+                suspicious_fields=[fail_check.to_dict()],
+                metadata={"doc_name": doc_name, "rejection_reason": classification.rejection_reason}
+            )
+
+            evidence_path = None
+            if output_evidence_dir:
+                os.makedirs(output_evidence_dir, exist_ok=True)
+                evidence_path = os.path.join(output_evidence_dir, f"{os.path.splitext(doc_name)[0]}_audit_board.png")
+                self._render_evidence_board(raw_img, rectified_card, np.zeros((h_card, w_card), dtype=np.float32), decision, trust_score, fast_fail_report, evidence_path)
+
+            return UnifiedAuditResult(
+                document_name=doc_name,
+                decision=decision,
+                trust_score=trust_score,
+                risk_score=risk_score,
+                rectification=rect_result,
+                extracted_fields=extracted_fields,
+                structural_report=fast_fail_report,
+                neural_metrics={"status": "SKIPPED_INTAKE_MISMATCH", "reason": classification.rejection_reason},
+                trust_receipt=receipt_dict,
+                classification=classification.to_dict(),
+                clean_heatmap=np.zeros((h_card, w_card), dtype=np.float32),
+                evidence_board_path=evidence_path
+            )
 
         # -------------------------------------------------------------
         # STEP 3: LAYER 2 & 3 STRUCTURAL, MATHEMATICAL & QR AUDIT
@@ -329,6 +423,7 @@ class UnifiedDocumentFraudPipeline:
             structural_report=structural_report,
             neural_metrics=neural_metrics,
             trust_receipt=receipt_dict,
+            classification=classification.to_dict(),
             clean_heatmap=clean_heatmap,
             evidence_board_path=evidence_path
         )

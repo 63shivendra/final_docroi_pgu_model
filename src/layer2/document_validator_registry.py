@@ -81,6 +81,14 @@ class UnifiedStructuralAuditEngine:
             DocumentValidationReport: Unified audit report.
         """
         target_type = doc_type.upper() if doc_type else self.auto_detect_document_type(fields)
+        # Normalize common aliases
+        type_alias_map = {
+            "PAN": "PAN_CARD", "PANCARD": "PAN_CARD", "PAN_CARD": "PAN_CARD",
+            "AADHAAR": "AADHAAR_CARD", "AADHAR": "AADHAAR_CARD", "UID": "AADHAAR_CARD", "AADHAAR_CARD": "AADHAAR_CARD",
+            "PASSPORT": "PASSPORT",
+            "GST": "KYB_CORPORATE", "GSTIN": "KYB_CORPORATE", "CIN": "KYB_CORPORATE", "KYB": "KYB_CORPORATE", "KYB_CORPORATE": "KYB_CORPORATE"
+        }
+        target_type = type_alias_map.get(target_type, target_type)
         all_checks: List[ValidationCheckResult] = []
         metadata: Dict[str, Any] = {"detected_document_type": target_type}
 

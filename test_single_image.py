@@ -5,9 +5,9 @@ Runs full neural forward inference using the newly converged Best PGU Model
 ('checkpoints/best_docroi_former_v2_pgu.pth') on a targeted document image.
 
 Detects:
-  - Sub-pixel character stroke alteration (e.g. 'E' on 'F' forgery)
-  - Global document forgery confidence
-  - Bounding box coordinates of tampered characters
+  - Sub-pixel character stroke and localized document forgery
+  - Global document forgery confidence score
+  - Bounding box coordinates of tampered regions
   - Multi-panel visual forensic evidence board
 """
 
@@ -172,28 +172,26 @@ def main():
         "name": "Hotspot #1 (Primary Peak)",
         "x": peak_x, "y": peak_y,
         "score": peak_prob,
-        "type": "Spliced Photo / Global Peak" if peak_x < int(orig_w * 0.35) else "Altered Region",
+        "type": "Primary Tamper Hotspot",
         "color": (255, 0, 0)  # Red
     })
 
-    # Search specifically for a secondary text/character hotspot in the PAN/text zone
-    # Typically text is in the middle-to-right area (x > 30% width)
-    text_zone_mask = np.zeros_like(prob_map_orig)
-    text_zone_mask[:, int(orig_w * 0.25):] = 1.0
-    text_prob_map = prob_map_orig * text_zone_mask
+    # Generic search for a spatially distinct secondary peak (suppress neighborhood of primary peak)
+    suppress_radius = 50
+    secondary_map = prob_map_orig.copy()
+    y_min, y_max = max(0, peak_y - suppress_radius), min(orig_h, peak_y + suppress_radius + 1)
+    x_min, x_max = max(0, peak_x - suppress_radius), min(orig_w, peak_x + suppress_radius + 1)
+    secondary_map[y_min:y_max, x_min:x_max] = 0.0
 
-    if text_prob_map.max() > 0.15:
-        t_peak_y, t_peak_x = np.unravel_index(np.argmax(text_prob_map), text_prob_map.shape)
-        # Only add if spatially distinct from primary peak (> 50 px distance)
-        dist = np.hypot(t_peak_x - peak_x, t_peak_y - peak_y)
-        if dist > 50:
-            hotspots.append({
-                "name": "Hotspot #2 (Text Alteration)",
-                "x": t_peak_x, "y": t_peak_y,
-                "score": float(text_prob_map.max() * 100.0),
-                "type": "Altered Text Character ('E on F')",
-                "color": (0, 165, 255)  # Orange / Amber
-            })
+    if secondary_map.max() > 0.15:
+        s_peak_y, s_peak_x = np.unravel_index(np.argmax(secondary_map), secondary_map.shape)
+        hotspots.append({
+            "name": "Hotspot #2 (Secondary Peak)",
+            "x": s_peak_x, "y": s_peak_y,
+            "score": float(secondary_map.max() * 100.0),
+            "type": "Secondary Tamper Hotspot",
+            "color": (0, 165, 255)  # Orange / Amber
+        })
 
     print("\n--- FORENSIC INFERENCE VERDICT ---")
     print(f"  Target File:                {os.path.basename(image_path)}")
@@ -228,7 +226,8 @@ def main():
     for (bx, by, bw, bh, _) in boxes[:3]:
         cv2.rectangle(annotated_rgb, (bx, by), (bx + bw, by + bh), (0, 220, 255), 1)
     ax1.imshow(annotated_rgb)
-    ax1.set_title(f"1. Target Document: {os.path.basename(image_path)} (Global Score: {global_prob*100:.1f}%)\nRed = Photo Splice ({hotspots[0]['score']:.1f}%) | Amber = Text Alteration ({hotspots[-1]['score']:.1f}%)", fontsize=11, fontweight="bold")
+    hs_title = f"Red = Primary ({hotspots[0]['score']:.1f}%)" + (f" | Amber = Secondary ({hotspots[1]['score']:.1f}%)" if len(hotspots) > 1 else "")
+    ax1.set_title(f"1. Target Document: {os.path.basename(image_path)} (Global Score: {global_prob*100:.1f}%)\n{hs_title}", fontsize=11, fontweight="bold")
     ax1.axis("off")
 
     # Panel 2: Normalized Localized Heatmap
@@ -236,7 +235,8 @@ def main():
     norm_heatmap = prob_map_orig / max(prob_map_orig.max(), 1e-6)
     im2 = ax2.imshow(norm_heatmap, cmap="jet", vmin=0.0, vmax=1.0)
     plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04, label="Relative Forgery Intensity")
-    ax2.set_title(f"2. PGU Entity-Gated Tamper Heatmap (Blank Space Suppressed)\nPrimary Peak: {peak_prob:.1f}% | Text Signal: {hotspots[-1]['score']:.1f}%", fontsize=11, fontweight="bold")
+    h2_text = f" | Secondary: {hotspots[1]['score']:.1f}%" if len(hotspots) > 1 else ""
+    ax2.set_title(f"2. PGU Entity-Gated Tamper Heatmap (Blank Space Suppressed)\nPrimary Peak: {peak_prob:.1f}%{h2_text}", fontsize=11, fontweight="bold")
     ax2.axis("off")
 
     # Panel 3: Binary Localization Mask
@@ -248,7 +248,7 @@ def main():
     ax3.set_title(f"3. Localized Forgery Contour Mask (tau={chosen_thresh:.2f})\nFlagged Altered Pixels: {flagged_adaptive}", fontsize=11, fontweight="bold")
     ax3.axis("off")
 
-    # Panel 4: Dual Microscopic Zoom (Left = Photo Splice, Right = Altered Character)
+    # Panel 4: Dual Microscopic Zoom on Detected Hotspots
     ax4 = fig.add_subplot(gs[1, 1])
     crop_radius = 55
     crops_to_show = []
@@ -270,10 +270,10 @@ def main():
     if len(crops_to_show) == 2:
         combined_zoom = np.hstack([crops_to_show[0], np.ones((160, 10, 3), dtype=np.uint8)*255, crops_to_show[1]])
         ax4.imshow(combined_zoom)
-        ax4.set_title(f"4. Dual Microscopic Zoom: [Left: Photo Splice | Right: 'E on F' Text]\nBoth Tamper Regions Captured Without Mutual Masking", fontsize=11, fontweight="bold")
+        ax4.set_title(f"4. Dual Microscopic Zoom: [Left: Primary Peak | Right: Secondary Hotspot]\nBoth Tamper Regions Captured Without Mutual Masking", fontsize=11, fontweight="bold")
     else:
         ax4.imshow(crops_to_show[0])
-        ax4.set_title(f"4. High-Res Zoom on Tamper Hotspot\nScore: {hotspots[0]['score']:.1f}%", fontsize=11, fontweight="bold")
+        ax4.set_title(f"4. High-Res Zoom on Primary Tamper Hotspot\nScore: {hotspots[0]['score']:.1f}%", fontsize=11, fontweight="bold")
     ax4.axis("off")
 
     img_stem = os.path.splitext(os.path.basename(image_path))[0]
