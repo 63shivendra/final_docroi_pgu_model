@@ -223,11 +223,30 @@ class UnifiedDocumentFraudPipeline:
                         extracted_fields["pan_number"] = pan_match.group(0)
                         extracted_fields["pan"] = pan_match.group(0)
 
-                # 2. Aadhaar Auto-Discovery (12 digits starting with 2-9)
-                if "aadhaar" not in extracted_fields and "aadhaar_number" not in extracted_fields:
-                    aadhaar_match = re.search(r'\b[2-9]{1}[0-9]{3}\s?[0-9]{4}\s?[0-9]{4}\b', full_text_upper)
-                    if aadhaar_match:
-                        extracted_fields["aadhaar_number"] = aadhaar_match.group(0)
+                # 2. Aadhaar & Virtual ID (VID) Disambiguation via Sequential Token Isolation
+                # Prevents 16-digit VID substrings (e.g. 5th-16th digits) from falsely triggering 12-digit Aadhaar regex
+                remaining_text = full_text_upper
+
+                # Step A: Check & Consume 16-Digit Virtual ID (VID)
+                vid_match = re.search(r'(?:VID\s*[:\-]?\s*)?\b([0-9]{4}\s?[0-9]{4}\s?[0-9]{4}\s?[0-9]{4})\b', remaining_text)
+                if vid_match:
+                    extracted_fields["vid_number"] = vid_match.group(1).strip()
+                    remaining_text = remaining_text[:vid_match.start()] + " [CONSUMED_VID] " + remaining_text[vid_match.end():]
+
+                # Step B: Check & Consume Masked Aadhaar (e.g. XXXX XXXX 1234 or **** **** 1234)
+                masked_match = re.search(r'\b([X*]{4}\s?[X*]{4}\s?[0-9]{4})\b', remaining_text)
+                if masked_match:
+                    extracted_fields["masked_aadhaar"] = masked_match.group(1).strip()
+                    remaining_text = remaining_text[:masked_match.start()] + " [CONSUMED_MASKED] " + remaining_text[masked_match.end():]
+
+                # Step C: Extract 12-Digit Full Aadhaar strictly from remaining unconsumed tokens
+                full_aadhaar_match = re.search(r'\b([2-9]{1}[0-9]{3}\s?[0-9]{4}\s?[0-9]{4})\b', remaining_text)
+                if full_aadhaar_match:
+                    extracted_fields["aadhaar_number"] = full_aadhaar_match.group(1).strip()
+                elif "masked_aadhaar" in extracted_fields:
+                    extracted_fields["aadhaar_number"] = extracted_fields["masked_aadhaar"]
+                elif "vid_number" in extracted_fields:
+                    extracted_fields["aadhaar_number"] = extracted_fields["vid_number"]
 
                 # 3. GSTIN Auto-Discovery (15 chars)
                 if "gstin" not in extracted_fields:

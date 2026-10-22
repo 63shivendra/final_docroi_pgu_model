@@ -67,7 +67,7 @@ class DocumentClassifier:
         DocumentCategory.AADHAAR_CARD: [
             "unique identification authority", "uidai", "government of india",
             "भारत सरकार", "मेरा आधार", "meri pehchan", "enrolment no",
-            "help@uidai.gov.in", "1947", "vid:"
+            "help@uidai.gov.in", "1947", "vid:", "vid :", "virtual id"
         ],
         DocumentCategory.PASSPORT: [
             "passport", "passeport", "republic of india", "भारत गणराज्य",
@@ -90,7 +90,9 @@ class DocumentClassifier:
     # Canonical Regex Patterns
     REGEX_PATTERNS = {
         DocumentCategory.PAN_CARD: re.compile(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b'),
-        DocumentCategory.AADHAAR_CARD: re.compile(r'\b[2-9]{1}[0-9]{3}\s?[0-9]{4}\s?[0-9]{4}\b'),
+        DocumentCategory.AADHAAR_CARD: re.compile(
+            r'(\b[2-9]{1}[0-9]{3}\s?[0-9]{4}\s?[0-9]{4}\b|\b[X*]{4}\s?[X*]{4}\s?[0-9]{4}\b|\b[0-9]{4}\s?[0-9]{4}\s?[0-9]{4}\s?[0-9]{4}\b)'
+        ),
         DocumentCategory.PASSPORT: re.compile(r'P<IND[A-Z<]+'),
         DocumentCategory.DRIVING_LICENSE: re.compile(r'\b[A-Z]{2}[-\s]?[0-9]{2}[-\s]?(19|20)[0-9]{2}[-\s]?[0-9]{7}\b'),
         DocumentCategory.VOTER_ID: re.compile(r'\b[A-Z]{3}[0-9]{7}\b'),

@@ -99,3 +99,4 @@ class EvaluationSampleRecord:
     pixel_recall: float
     inference_latency_ms: float
     margin_glare_suppressed: bool = True
+    

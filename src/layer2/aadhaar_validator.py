@@ -77,6 +77,22 @@ class VerhoeffAlgorithm:
 
         return c == 0
 
+    @classmethod
+    def generate_checksum(cls, number_str: str) -> int:
+        """
+        Computes the Verhoeff check digit for an input sequence of n digits.
+        Appends check digit at position 0 (the least significant digit).
+        """
+        if not number_str.isdigit():
+            raise ValueError("Input must consist solely of digits.")
+
+        c = 0
+        reversed_digits = [int(d) for d in reversed(number_str)]
+        for i, digit in enumerate(reversed_digits):
+            c = cls._D_TABLE[c][cls._P_TABLE[(i + 1) % 8][digit]]
+
+        return cls._INV_TABLE[c]
+
 
 class AadhaarStructuralValidator(BaseStructuralValidator):
     """
@@ -84,8 +100,12 @@ class AadhaarStructuralValidator(BaseStructuralValidator):
     for Indian Aadhaar cards.
     """
 
-    # Aadhaar cannot start with 0 or 1
+    # 1. Standard 12-digit Aadhaar (cannot start with 0 or 1)
     AADHAAR_REGEX = re.compile(r"^([2-9]{1}[0-9]{3})\s?([0-9]{4})\s?([0-9]{4})$")
+    # 2. 16-digit Virtual ID (VID)
+    VID_REGEX = re.compile(r"^([0-9]{4})\s?([0-9]{4})\s?([0-9]{4})\s?([0-9]{4})$")
+    # 3. Masked Aadhaar (e.g. XXXX XXXX 1234 or **** **** 1234)
+    MASKED_AADHAAR_REGEX = re.compile(r"^([X*]{4})\s?([X*]{4})\s?([0-9]{4})$")
 
     @property
     def supported_document_type(self) -> str:
@@ -94,86 +114,119 @@ class AadhaarStructuralValidator(BaseStructuralValidator):
     def validate(self, fields: Dict[str, Any]) -> DocumentValidationReport:
         checks: List[ValidationCheckResult] = []
         raw_num = str(fields.get("aadhaar_number", fields.get("uid", fields.get("id_number", "")))).strip()
+        vid_raw = str(fields.get("vid_number", fields.get("vid", ""))).strip()
         clean_num = re.sub(r"[\s-]+", "", raw_num)
+        clean_vid = re.sub(r"[\s-]+", "", vid_raw)
 
-        # Dimension 1: 12-Digit Lexical Structure
-        match = self.AADHAAR_REGEX.match(raw_num)
-        if not match or len(clean_num) != 12:
+        # Detect representation type
+        is_masked = bool(self.MASKED_AADHAAR_REGEX.match(raw_num))
+        is_16_vid_primary = (len(clean_num) == 16 and clean_num.isdigit())
+        is_12_uid = bool(self.AADHAAR_REGEX.match(raw_num) and len(clean_num) == 12)
+
+        # SCENARIO A: 16-Digit Virtual ID (VID) provided as primary or secondary
+        target_vid = clean_num if is_16_vid_primary else clean_vid
+        if target_vid and len(target_vid) == 16 and target_vid.isdigit():
+            is_vid_checksum_valid = VerhoeffAlgorithm.validate_checksum(target_vid)
+            if is_vid_checksum_valid:
+                checks.append(ValidationCheckResult(
+                    check_name="VID_VERHOEFF_CHECKSUM",
+                    passed=True,
+                    severity=SeverityLevel.INFO,
+                    reason_code="VID_CHECKSUM_VALID",
+                    detail="16-Digit UIDAI Virtual ID (VID) satisfies Verhoeff dihedral D5 mathematical checksum.",
+                    actual_value=f"XXXX-XXXX-XXXX-{target_vid[-4:]}"
+                ))
+            else:
+                checks.append(ValidationCheckResult(
+                    check_name="VID_VERHOEFF_CHECKSUM",
+                    passed=False,
+                    severity=SeverityLevel.CRITICAL,
+                    reason_code="VID_CHECKSUM_FAILED",
+                    detail="Definite Forgery: 16-Digit Virtual ID failed Verhoeff dihedral D5 checksum.",
+                    actual_value=f"XXXX-XXXX-XXXX-{target_vid[-4:]}",
+                    expected_value="Valid 16-digit Verhoeff checksum"
+                ))
+
+        # SCENARIO B: Masked Aadhaar (e.g. XXXX XXXX 1234)
+        if is_masked:
+            checks.append(ValidationCheckResult(
+                check_name="MASKED_AADHAAR_COMPLIANCE",
+                passed=True,
+                severity=SeverityLevel.INFO,
+                reason_code="VALID_MASKED_AADHAAR",
+                detail="Legitimate Masked Aadhaar detected. Complies with RBI/PMLA/UIDAI privacy masking mandates.",
+                actual_value=raw_num
+            ))
+
+        # SCENARIO C: Standard 12-Digit Full Aadhaar
+        elif is_12_uid:
+            checks.append(ValidationCheckResult(
+                check_name="AADHAAR_LEXICAL_FORMAT",
+                passed=True,
+                severity=SeverityLevel.INFO,
+                reason_code="VALID_AADHAAR_FORMAT",
+                detail="12-digit structure and prefix [2-9] verified.",
+                actual_value=self._mask_aadhaar(clean_num)
+            ))
+
+            # Trivial Sequence Suppression
+            if len(set(clean_num)) <= 2 or clean_num in ("123456789012", "987654321098"):
+                checks.append(ValidationCheckResult(
+                    check_name="TRIVIAL_SEQUENCE_CHECK",
+                    passed=False,
+                    severity=SeverityLevel.CRITICAL,
+                    reason_code="DUMMY_AADHAAR_DETECTED",
+                    detail="Synthetic dummy Aadhaar sequence detected.",
+                    actual_value=self._mask_aadhaar(clean_num)
+                ))
+            else:
+                checks.append(ValidationCheckResult(
+                    check_name="TRIVIAL_SEQUENCE_CHECK",
+                    passed=True,
+                    severity=SeverityLevel.INFO,
+                    reason_code="NON_TRIVIAL_SEQUENCE",
+                    detail="Number passes entropy and non-trivial distribution checks.",
+                    actual_value=self._mask_aadhaar(clean_num)
+                ))
+
+            # 12-digit Verhoeff Checksum
+            is_checksum_valid = VerhoeffAlgorithm.validate_checksum(clean_num)
+            if is_checksum_valid:
+                checks.append(ValidationCheckResult(
+                    check_name="VERHOEFF_MATHEMATICAL_CHECKSUM",
+                    passed=True,
+                    severity=SeverityLevel.INFO,
+                    reason_code="VERHOEFF_CHECKSUM_VALID",
+                    detail="Satisfies ISO/IEC 7064 Mod 11, 10 Verhoeff dihedral D5 mathematical integrity.",
+                    actual_value="VALID"
+                ))
+            else:
+                checks.append(ValidationCheckResult(
+                    check_name="VERHOEFF_MATHEMATICAL_CHECKSUM",
+                    passed=False,
+                    severity=SeverityLevel.CRITICAL,
+                    reason_code="VERHOEFF_CHECKSUM_FAILED",
+                    detail=(
+                        "Definite Forgery: Failed Verhoeff dihedral D5 mathematical checksum. "
+                        "One or more digits have been substituted, altered, or transposed."
+                    ),
+                    actual_value="INVALID",
+                    expected_value="Valid ISO/IEC 7064 checksum digit"
+                ))
+
+        # SCENARIO D: Not 12-digit, not 16-digit VID, and not Masked
+        elif not (target_vid and len(target_vid) == 16):
             checks.append(ValidationCheckResult(
                 check_name="AADHAAR_LEXICAL_FORMAT",
                 passed=False,
                 severity=SeverityLevel.CRITICAL,
                 reason_code="INVALID_AADHAAR_FORMAT",
                 detail=(
-                    f"Aadhaar candidate '{raw_num}' violates 12-digit standard. "
-                    f"Must be 12 digits, cannot start with 0 or 1."
+                    f"Candidate '{raw_num}' is neither a valid 12-digit UID, "
+                    f"a 16-digit Virtual ID (VID), nor a compliant Masked Aadhaar (XXXX XXXX 1234)."
                 ),
                 actual_value=raw_num,
-                expected_value="12-digit number starting with [2-9]"
-            ))
-            score, crit, warn = self.compute_integrity_score(checks)
-            return DocumentValidationReport(
-                document_type=self.supported_document_type,
-                is_structurally_valid=False,
-                structural_integrity_score=score,
-                critical_violations_count=crit,
-                warning_violations_count=warn,
-                checks=checks,
-                metadata={"aadhaar_masked": self._mask_aadhaar(clean_num)}
-            )
-
-        checks.append(ValidationCheckResult(
-            check_name="AADHAAR_LEXICAL_FORMAT",
-            passed=True,
-            severity=SeverityLevel.INFO,
-            reason_code="VALID_AADHAAR_FORMAT",
-            detail="12-digit structure and prefix [2-9] verified.",
-            actual_value=self._mask_aadhaar(clean_num)
-        ))
-
-        # Dimension 2: Trivial / Repeated Pattern Suppression
-        if len(set(clean_num)) <= 2 or clean_num in ("123456789012", "987654321098"):
-            checks.append(ValidationCheckResult(
-                check_name="TRIVIAL_SEQUENCE_CHECK",
-                passed=False,
-                severity=SeverityLevel.CRITICAL,
-                reason_code="DUMMY_AADHAAR_DETECTED",
-                detail="Synthetic dummy Aadhaar sequence detected.",
-                actual_value=self._mask_aadhaar(clean_num)
-            ))
-        else:
-            checks.append(ValidationCheckResult(
-                check_name="TRIVIAL_SEQUENCE_CHECK",
-                passed=True,
-                severity=SeverityLevel.INFO,
-                reason_code="NON_TRIVIAL_SEQUENCE",
-                detail="Number passes entropy and non-trivial distribution checks.",
-                actual_value=self._mask_aadhaar(clean_num)
-            ))
-
-        # Dimension 3: Verhoeff Dihedral D5 Mathematical Checksum
-        is_checksum_valid = VerhoeffAlgorithm.validate_checksum(clean_num)
-        if is_checksum_valid:
-            checks.append(ValidationCheckResult(
-                check_name="VERHOEFF_MATHEMATICAL_CHECKSUM",
-                passed=True,
-                severity=SeverityLevel.INFO,
-                reason_code="VERHOEFF_CHECKSUM_VALID",
-                detail="Satisfies ISO/IEC 7064 Mod 11, 10 Verhoeff dihedral D5 mathematical integrity.",
-                actual_value="VALID"
-            ))
-        else:
-            checks.append(ValidationCheckResult(
-                check_name="VERHOEFF_MATHEMATICAL_CHECKSUM",
-                passed=False,
-                severity=SeverityLevel.CRITICAL,
-                reason_code="VERHOEFF_CHECKSUM_FAILED",
-                detail=(
-                    "Definite Forgery: Failed Verhoeff dihedral D5 mathematical checksum. "
-                    "One or more digits have been substituted, altered, or transposed."
-                ),
-                actual_value="INVALID",
-                expected_value="Valid ISO/IEC 7064 checksum digit"
+                expected_value="12-digit UID, 16-digit VID, or Masked Aadhaar"
             ))
 
         score, crit, warn = self.compute_integrity_score(checks)
@@ -184,7 +237,7 @@ class AadhaarStructuralValidator(BaseStructuralValidator):
             critical_violations_count=crit,
             warning_violations_count=warn,
             checks=checks,
-            metadata={"aadhaar_masked": self._mask_aadhaar(clean_num)}
+            metadata={"aadhaar_masked": self._mask_aadhaar(clean_num if len(clean_num) == 12 else (clean_vid if len(clean_vid) == 16 else raw_num))}
         )
 
     def _mask_aadhaar(self, clean_num: str) -> str:
