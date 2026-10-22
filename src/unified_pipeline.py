@@ -294,18 +294,37 @@ class UnifiedDocumentFraudPipeline:
         if not doc_type and classification.detected_category != DocumentCategory.UNKNOWN:
             doc_type = classification.detected_category.value
 
-        # Fast-fail gate: If requested document does not match uploaded document
+        # Fast-fail gate: If requested document does not match uploaded document or fails image quality
         if doc_type and not classification.is_matching_requested:
-            decision = "REJECTED_WRONG_DOCUMENT_TYPE"
+            is_non_doc = (classification.detected_category == DocumentCategory.NON_DOCUMENT)
+            rejection_text = classification.rejection_reason or ""
+
+            if is_non_doc and ("blur" in rejection_text.lower() or "laplacian" in rejection_text.lower()):
+                decision = "REJECTED_BLURRY_IMAGE"
+                reason_code = "IMAGE_EXCESSIVE_BLUR"
+                check_name = "IMAGE_QUALITY_SHARPNESS"
+            elif is_non_doc:
+                decision = "REJECTED_NON_DOCUMENT"
+                reason_code = "PHYSICAL_DOCUMENT_NOT_DETECTED"
+                check_name = "PHYSICAL_DOCUMENT_SUITABILITY"
+            elif classification.detected_category == DocumentCategory.UNKNOWN:
+                decision = "REJECTED_UNKNOWN_DOCUMENT"
+                reason_code = "UNKNOWN_DOCUMENT_TAXONOMY"
+                check_name = "DOCUMENT_TAXONOMY_IDENTIFICATION"
+            else:
+                decision = "REJECTED_WRONG_DOCUMENT_TYPE"
+                reason_code = "DOCUMENT_CATEGORY_MISMATCH"
+                check_name = "INTAKE_GATEKEEPER_SLOT_MATCH"
+
             risk_score = 1.0
             trust_score = 0.0
 
             fail_check = ValidationCheckResult(
-                check_name="INTAKE_GATEKEEPER_MATCH",
+                check_name=check_name,
                 passed=False,
                 severity=SeverityLevel.CRITICAL,
-                reason_code="DOCUMENT_CATEGORY_MISMATCH",
-                detail=classification.rejection_reason or f"Uploaded document does not match requested '{doc_type}'."
+                reason_code=reason_code,
+                detail=rejection_text or f"Uploaded document does not match requested '{doc_type}'."
             )
             fast_fail_report = DocumentValidationReport(
                 document_type=doc_type,
