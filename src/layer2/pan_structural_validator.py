@@ -55,6 +55,55 @@ class PANStructuralValidator(BaseStructuralValidator):
     def supported_document_type(self) -> str:
         return "PAN_CARD"
 
+    @classmethod
+    def repair_pan_homoglyphs(cls, raw: str) -> Tuple[str, bool]:
+        """
+        Applies positional OCR homoglyph disambiguation based on immutable
+        CBDT Section 139A syntax (Chars 1-5 & 10 must be letters; Chars 6-9 must be digits).
+        Fixes OCR confusions such as 'S' -> '5', 'I' -> '1', 'O' -> '0'.
+        """
+        clean = re.sub(r'[\s\-]+', '', raw).upper()
+        if len(clean) != 10:
+            return clean, False
+
+        # If already strictly matches, no repair needed
+        if cls.PAN_REGEX.match(clean):
+            return clean, False
+
+        letter_to_digit = {
+            'O': '0', 'D': '0', 'Q': '0',
+            'I': '1', 'L': '1', '|': '1',
+            'Z': '2', 'A': '4', 'S': '5',
+            'G': '6', 'B': '8'
+        }
+        digit_to_letter = {
+            '0': 'O', '1': 'I', '2': 'Z',
+            '4': 'A', '5': 'S', '6': 'G', '8': 'B'
+        }
+
+        repaired_chars = list(clean)
+        was_repaired = False
+
+        # Letter positions (indices 0, 1, 2, 3, 4, 9)
+        for idx in [0, 1, 2, 3, 4, 9]:
+            ch = repaired_chars[idx]
+            if ch.isdigit() and ch in digit_to_letter:
+                repaired_chars[idx] = digit_to_letter[ch]
+                was_repaired = True
+
+        # Digit positions (indices 5, 6, 7, 8)
+        for idx in [5, 6, 7, 8]:
+            ch = repaired_chars[idx]
+            if not ch.isdigit() and ch in letter_to_digit:
+                repaired_chars[idx] = letter_to_digit[ch]
+                was_repaired = True
+
+        candidate = "".join(repaired_chars)
+        if cls.PAN_REGEX.match(candidate):
+            return candidate, was_repaired
+
+        return clean, False
+
     def validate(self, fields: Dict[str, Any]) -> DocumentValidationReport:
         """
         Executes four-dimensional structural verification.
@@ -71,8 +120,22 @@ class PANStructuralValidator(BaseStructuralValidator):
         raw_name = str(fields.get("name", fields.get("full_name", fields.get("cardholder_name", "")))).strip()
         raw_dob = str(fields.get("dob", fields.get("date_of_birth", fields.get("birth_date", "")))).strip()
 
-        # Dimension 1: 10-Character Lexical Grammar & Entity Extraction
-        pan_match = self.PAN_REGEX.match(raw_pan)
+        # Dimension 1: 10-Character Lexical Grammar & Entity Extraction with Homoglyph Auto-Repair
+        clean_pan = re.sub(r'[\s\-]+', '', raw_pan)
+        pan_to_check, was_repaired = self.repair_pan_homoglyphs(clean_pan)
+
+        if was_repaired:
+            checks.append(ValidationCheckResult(
+                check_name="OCR_HOMOGLYPH_DISAMBIGUATION",
+                passed=True,
+                severity=SeverityLevel.INFO,
+                reason_code="HOMOGLYPH_AUTO_REPAIRED",
+                detail=f"OCR character confusion auto-repaired: '{raw_pan}' -> '{pan_to_check}' using CBDT Section 139A positional grammar.",
+                actual_value=raw_pan,
+                expected_value=pan_to_check
+            ))
+
+        pan_match = self.PAN_REGEX.match(pan_to_check)
         if not pan_match:
             checks.append(ValidationCheckResult(
                 check_name="PAN_LEXICAL_FORMAT",
@@ -100,8 +163,8 @@ class PANStructuralValidator(BaseStructuralValidator):
             passed=True,
             severity=SeverityLevel.INFO,
             reason_code="VALID_PAN_FORMAT",
-            detail=f"PAN '{raw_pan}' strictly satisfies 10-character CBDT grammar.",
-            actual_value=raw_pan
+            detail=f"PAN '{pan_to_check}' strictly satisfies 10-character CBDT grammar.",
+            actual_value=pan_to_check
         ))
 
         # Dimension 2: Entity Status Verification (4th character)

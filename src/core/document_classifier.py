@@ -89,7 +89,9 @@ class DocumentClassifier:
 
     # Canonical Regex Patterns
     REGEX_PATTERNS = {
-        DocumentCategory.PAN_CARD: re.compile(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b'),
+        DocumentCategory.PAN_CARD: re.compile(
+            r'(\b[A-Z]{5}[0-9]{4}[A-Z]\b|\b[A-Z]{3}[ABCFGHLJPTK][A-Z][0-9SIAOLZB]{4}[A-Z]\b)'
+        ),
         DocumentCategory.AADHAAR_CARD: re.compile(
             r'(\b[2-9]{1}[0-9]{3}\s?[0-9]{4}\s?[0-9]{4}\b|\b[X*]{4}\s?[X*]{4}\s?[0-9]{4}\b|\b[0-9]{4}\s?[0-9]{4}\s?[0-9]{4}\s?[0-9]{4}\b)'
         ),

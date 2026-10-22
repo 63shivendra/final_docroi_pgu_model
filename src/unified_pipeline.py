@@ -216,12 +216,23 @@ class UnifiedDocumentFraudPipeline:
                 full_text_upper = " ".join(ocr_texts).upper()
                 import re
 
-                # 1. PAN Card Auto-Discovery
+                # 1. PAN Card Auto-Discovery with Positional Homoglyph Repair
                 if "pan" not in extracted_fields and "pan_number" not in extracted_fields:
                     pan_match = re.search(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b', full_text_upper)
                     if pan_match:
                         extracted_fields["pan_number"] = pan_match.group(0)
                         extracted_fields["pan"] = pan_match.group(0)
+                    else:
+                        from src.layer2.pan_structural_validator import PANStructuralValidator
+                        # Scan 10-char alphanumeric tokens for homoglyphs (e.g. APUPP25SIA -> APUPP2551A)
+                        candidates = re.findall(r'\b[A-Z0-9]{10}\b', full_text_upper)
+                        for cand in candidates:
+                            repaired, was_rep = PANStructuralValidator.repair_pan_homoglyphs(cand)
+                            if was_rep:
+                                extracted_fields["pan_number"] = repaired
+                                extracted_fields["pan"] = repaired
+                                extracted_fields["raw_pan_ocr"] = cand
+                                break
 
                 # 2. Aadhaar & Virtual ID (VID) Disambiguation via Sequential Token Isolation
                 # Prevents 16-digit VID substrings (e.g. 5th-16th digits) from falsely triggering 12-digit Aadhaar regex
