@@ -15,9 +15,11 @@ test_sample_images/
 *aadhaar*.jpg
 *aadhaar*.png
 
-# Test outputs and scratch
+# Test outputs, scratch, and temporary dashboard
 scratch/
 reports/*_test_output/
+dashboard/
+
 
 # Ensure all source code is always tracked
 !src/**
