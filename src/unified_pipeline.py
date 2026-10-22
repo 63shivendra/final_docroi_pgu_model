@@ -192,12 +192,25 @@ class UnifiedDocumentFraudPipeline:
                     scaled_card = rectified_card
 
                 ocr_results = self.ocr_reader.readtext(scaled_card)
+                raw_tokens = []
                 for (bbox, text, prob) in ocr_results:
                     ocr_texts.append(text)
                     # Convert 4-point polygon to [x, y, w, h] mapped back to rectified_card scale
                     pts = np.array([[int(pt[0] / scale), int(pt[1] / scale)] for pt in bbox], dtype=np.int32)
                     bx, by, bw, bh = cv2.boundingRect(pts)
                     entity_boxes.append((bx, by, bw, bh))
+                    raw_tokens.append({
+                        "text": text,
+                        "confidence": round(float(prob), 4),
+                        "box": [int(bx), int(by), int(bw), int(bh)]
+                    })
+
+                extracted_fields["raw_tokens"] = raw_tokens
+                extracted_fields["token_count"] = len(raw_tokens)
+                if raw_tokens:
+                    extracted_fields["avg_confidence"] = round(float(sum(t["confidence"] for t in raw_tokens) / len(raw_tokens) * 100.0), 1)
+                else:
+                    extracted_fields["avg_confidence"] = 0.0
 
                 # Auto-parse standard ID patterns if not provided manually
                 full_text_upper = " ".join(ocr_texts).upper()
