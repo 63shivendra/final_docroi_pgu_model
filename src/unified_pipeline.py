@@ -146,7 +146,67 @@ class UnifiedDocumentFraudPipeline:
             self.model.eval()
         except Exception as e:
             print(f"[Warning] Neural model initialization skipped: {e}")
-            self.model = None
+    @staticmethod
+    def extract_tamper_bounding_boxes(
+        heatmap: np.ndarray,
+        threshold: float = 0.50,
+        min_pixels: int = 25,
+        raw_tokens: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Extracts discrete bounding boxes and contours around localized neural tamper clusters.
+        Correlates each detected tamper zone with overlapping OCR entity text tokens.
+        """
+        if heatmap is None or heatmap.size == 0 or heatmap.max() < threshold:
+            return []
+
+        binary_mask = (heatmap >= threshold).astype(np.uint8) * 255
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+        binary_closed = cv2.morphologyEx(binary_mask, cv2.MORPH_CLOSE, kernel)
+
+        contours, _ = cv2.findContours(binary_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        boxes = []
+
+        for idx, cnt in enumerate(contours):
+            area = cv2.contourArea(cnt)
+            bx, by, bw, bh = cv2.boundingRect(cnt)
+            region_mask = binary_mask[by:by+bh, bx:bx+bw]
+            pixel_count = int((region_mask > 0).sum())
+
+            if pixel_count < min_pixels:
+                continue
+
+            region_heatmap = heatmap[by:by+bh, bx:bx+bw]
+            peak_prob = float(region_heatmap.max() * 100.0)
+            mean_prob = float(region_heatmap[region_mask > 0].mean() * 100.0)
+
+            # Correlate with OCR entity tokens if available
+            associated_tokens = []
+            if raw_tokens:
+                for token in raw_tokens:
+                    tbx, tby, tbw, tbh = token.get("box", [0, 0, 0, 0])
+                    # Check box intersection
+                    ix1 = max(bx, tbx)
+                    iy1 = max(by, tby)
+                    ix2 = min(bx + bw, tbx + tbw)
+                    iy2 = min(by + bh, tby + tbh)
+                    if ix2 > ix1 and iy2 > iy1:
+                        associated_tokens.append(token.get("text", ""))
+
+            field_label = ", ".join(associated_tokens) if associated_tokens else "UNPRINTED_CANVAS_ZONE"
+
+            boxes.append({
+                "box_id": f"TAMPER_ZONE_{len(boxes) + 1}",
+                "box": [int(bx), int(by), int(bw), int(bh)],
+                "peak_probability_pct": round(peak_prob, 1),
+                "mean_probability_pct": round(mean_prob, 1),
+                "tampered_pixels": pixel_count,
+                "contour_area": int(area),
+                "associated_field": field_label
+            })
+
+        boxes.sort(key=lambda x: x["peak_probability_pct"], reverse=True)
+        return boxes
 
     def process(
         self,
@@ -387,6 +447,8 @@ class UnifiedDocumentFraudPipeline:
             "peak_pixel_probability_pct": 0.0,
             "tampered_pixels_count": 0,
             "tampered_area_pct": 0.0,
+            "tampered_bounding_boxes": [],
+            "tampered_clusters_count": 0,
             "status": "EVALUATED"
         }
 
@@ -419,11 +481,21 @@ class UnifiedDocumentFraudPipeline:
             tamper_pixels = int(flagged_mask.sum())
             peak_prob = float(clean_heatmap.max() * 100.0)
 
+            # Extract discrete connected component bounding boxes around each tamper cluster
+            tamper_boxes = self.extract_tamper_bounding_boxes(
+                clean_heatmap,
+                threshold=0.50,
+                min_pixels=25,
+                raw_tokens=extracted_fields.get("raw_tokens", [])
+            )
+
             neural_metrics.update({
                 "global_fraud_probability_pct": round(p_doc, 2),
                 "peak_pixel_probability_pct": round(peak_prob, 2),
                 "tampered_pixels_count": tamper_pixels,
-                "tampered_area_pct": round((tamper_pixels / float(h_card * w_card)) * 100.0, 4)
+                "tampered_area_pct": round((tamper_pixels / float(h_card * w_card)) * 100.0, 4),
+                "tampered_bounding_boxes": tamper_boxes,
+                "tampered_clusters_count": len(tamper_boxes)
             })
 
         # -------------------------------------------------------------
