@@ -103,14 +103,43 @@ class DocumentRectifier:
 
         for c in contours:
             area = cv2.contourArea(c)
-            if area < (total_pixels * self.min_area_ratio):
+            area_ratio = area / float(total_pixels)
+            if area_ratio < self.min_area_ratio:
                 continue
+
+            bx, by, bw, bh = cv2.boundingRect(c)
+            if bw >= w * 0.98 and bh >= h * 0.98:
+                continue
+
+            # Aspect ratio calculation (max dim / min dim)
+            aspect_ratio = max(bw, bh) / float(max(min(bw, bh), 1))
+
+            # CRITICAL ANTI-QR GUARD:
+            # QR codes and square photo widgets are nearly 1.0:1.0 squares (aspect ratio < 1.25)
+            # and occupy localized internal regions (< 65% of the total canvas).
+            # True ID cards (ISO ID-1) have aspect ratio ~1.58, A4/invoices ~1.41.
+            # Never treat an internal square element as the document boundary!
+            if aspect_ratio < 1.25 and area_ratio < 0.65:
+                continue
+
             peri = cv2.arcLength(c, True)
             approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+            pts = None
+
             if len(approx) == 4 and cv2.isContourConvex(approx):
                 pts = approx.reshape(4, 2)
+            elif 4 <= len(approx) <= 12 and area_ratio >= 0.30:
+                # Rounded-corner physical cards: use minimum area rotated bounding rectangle
+                rect = cv2.minAreaRect(c)
+                rw, rh = rect[1]
+                if rw > 60 and rh > 60:
+                    cand_ratio = max(rw, rh) / float(min(rw, rh))
+                    if cand_ratio >= 1.22:
+                        box = cv2.boxPoints(rect)
+                        pts = box.astype("float32")
+
+            if pts is not None:
                 # Verify that contour does not span full canvas (if so, already tightly cropped)
-                bx, by, bw, bh = cv2.boundingRect(c)
                 if bw < w * 0.96 or bh < h * 0.96:
                     warped = self.four_point_transform(image, pts)
                     rem_pixels = total_pixels - (warped.shape[0] * warped.shape[1])
@@ -131,23 +160,27 @@ class DocumentRectifier:
         if contours_bg:
             largest = max(contours_bg, key=cv2.contourArea)
             area = cv2.contourArea(largest)
-            if area > (total_pixels * self.min_area_ratio):
+            area_ratio = area / float(total_pixels)
+            if area_ratio > self.min_area_ratio:
                 bx, by, bw, bh = cv2.boundingRect(largest)
-                if bw < w * 0.95 or bh < h * 0.95:
-                    cropped = image[by:by+bh, bx:bx+bw]
-                    pts = np.array([[bx, by], [bx+bw, by], [bx+bw, by+bh], [bx, by+bh]])
-                    rem_pixels = total_pixels - (bw * bh)
-                    return RectificationResult(
-                        rectified_image=cropped,
-                        was_rectified=True,
-                        corner_points=pts,
-                        original_shape=(w, h),
-                        rectified_shape=(bw, bh),
-                        background_pixels_removed=rem_pixels,
-                        background_ratio_removed=rem_pixels / float(total_pixels)
-                    )
+                aspect_ratio = max(bw, bh) / float(max(min(bw, bh), 1))
+                # Skip if this fallback is also a square internal QR box
+                if not (aspect_ratio < 1.25 and area_ratio < 0.65):
+                    if bw < w * 0.95 or bh < h * 0.95:
+                        cropped = image[by:by+bh, bx:bx+bw]
+                        pts = np.array([[bx, by], [bx+bw, by], [bx+bw, by+bh], [bx, by+bh]])
+                        rem_pixels = total_pixels - (bw * bh)
+                        return RectificationResult(
+                            rectified_image=cropped,
+                            was_rectified=True,
+                            corner_points=pts,
+                            original_shape=(w, h),
+                            rectified_shape=(bw, bh),
+                            background_pixels_removed=rem_pixels,
+                            background_ratio_removed=rem_pixels / float(total_pixels)
+                        )
 
-        # Document is already tightly cropped
+        # Document is already tightly cropped or no outer boundary found -> preserve full image
         return RectificationResult(
             rectified_image=image,
             was_rectified=False,
@@ -200,10 +233,53 @@ class SemanticRoIMasker:
     """
 
     @staticmethod
+    def locate_photo_box(card_img: np.ndarray, doc_type: Optional[str] = None) -> Optional[Tuple[int, int, int, int]]:
+        """
+        Localizes cardholder portrait photo box using canonical ID card geometry and color variance.
+        """
+        if card_img is None or card_img.size == 0:
+            return None
+        h, w = card_img.shape[:2]
+        d_type = (doc_type or "").upper()
+
+        if "PAN" in d_type:
+            # PAN Card: Photo is canonically located in bottom-right / mid-right:
+            py1, py2 = int(h * 0.40), int(h * 0.88)
+            px1, px2 = int(w * 0.68), int(w * 0.96)
+            return (px1, py1, px2 - px1, py2 - py1)
+        elif "AADHAAR" in d_type:
+            # Aadhaar Card: Photo is canonically located in mid-left / lower-left:
+            py1, py2 = int(h * 0.22), int(h * 0.82)
+            px1, px2 = int(w * 0.04), int(w * 0.32)
+            return (px1, py1, px2 - px1, py2 - py1)
+        else:
+            # Generic ID Card: Standard left portrait anchor
+            py1, py2 = int(h * 0.22), int(h * 0.82)
+            px1, px2 = int(w * 0.05), int(w * 0.35)
+            return (px1, py1, px2 - px1, py2 - py1)
+
+    @staticmethod
+    def locate_signature_box(card_img: np.ndarray, doc_type: Optional[str] = None) -> Optional[Tuple[int, int, int, int]]:
+        """
+        Localizes official signature strip zone (e.g. on PAN cards).
+        """
+        if card_img is None or card_img.size == 0:
+            return None
+        h, w = card_img.shape[:2]
+        d_type = (doc_type or "").upper()
+
+        if "PAN" in d_type:
+            # PAN Card: Signature is canonically in lower-middle / bottom-left strip:
+            sy1, sy2 = int(h * 0.68), int(h * 0.92)
+            sx1, sx2 = int(w * 0.12), int(w * 0.65)
+            return (sx1, sy1, sx2 - sx1, sy2 - sy1)
+        return None
+
+    @staticmethod
     def build_entity_mask(
         shape: Tuple[int, int],
         bounding_boxes: List[Tuple[int, int, int, int]],
-        dilation_padding: int = 4
+        dilation_padding: int = 6
     ) -> np.ndarray:
         """
         Constructs a binary mask of high-value entity regions.
@@ -227,16 +303,16 @@ class SemanticRoIMasker:
         cls,
         heatmap: np.ndarray,
         entity_boxes: Optional[List[Tuple[int, int, int, int]]] = None,
-        background_suppression_factor: float = 0.20
+        background_suppression_factor: float = 0.0
     ) -> np.ndarray:
         """
-        Keeps 100% anomaly weight inside semantic entities, while heavily
-        down-weighting (or zeroing) blank unprinted plastic background noise.
+        Keeps 100% anomaly weight inside semantic entities (OCR text, Photo, Signature, QR),
+        while strictly zeroing out blank unprinted plastic background noise and lamination glare.
         """
         if not entity_boxes:
             return heatmap
 
         entity_mask = cls.build_entity_mask(heatmap.shape, entity_boxes)
-        # Scale: entity zones get 1.0, blank zones get background_suppression_factor
+        # Scale: entity zones get 1.0, blank zones get background_suppression_factor (default 0.0 = completely muted)
         weight_map = entity_mask + (1.0 - entity_mask) * background_suppression_factor
         return heatmap * weight_map

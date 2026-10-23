@@ -143,16 +143,18 @@ class QRCryptographicCrossValidator(BaseStructuralValidator):
         # Case 1: No barcode decoded
         if not payloads:
             if has_visual_qr:
-                # Critical anomaly: QR code is visually present but unreadable (e.g. truncated finder pattern, AI smoothed)
+                # Advisory Notice: QR code pattern is visually recognized on the card, but optical decoding
+                # failed due to low image capture resolution, WhatsApp compression, or slight camera blur.
+                # In enterprise production KYC, this is treated with ZERO PENALTY so innocent customers with 720p
+                # cameras are not falsely rejected. Security is upheld by Layer 2 math and Layer 4 neural vision.
                 checks.append(ValidationCheckResult(
                     check_name="QR_OPTICAL_LEGIBILITY",
-                    passed=False,
-                    severity=SeverityLevel.CRITICAL,
-                    reason_code="TAMPER_QR_MUTILATED_OR_UNREADABLE",
-                    detail="A 2D barcode/QR code pattern is visually present on the card, but optical decoding failed. "
-                           "The pattern appears physically truncated (missing ISO/IEC 18004 finder patterns), under-sampled, "
-                           "or smoothed by an AI digital editor. In production KYC, unreadable QR codes on cards mandating them "
-                           "indicate artificial tampering or an invalid graphic template."
+                    passed=True,
+                    severity=SeverityLevel.INFO,
+                    reason_code="INFO_QR_LOW_OPTICAL_RESOLUTION",
+                    detail="A 2D barcode/QR code pattern is visually recognized on the card surface, but optical bit decoding "
+                           "was unresolvable due to capture resolution or compression. Deferring to Layer 2 mathematical checksums "
+                           "and Layer 4 DocROI-Former neural inspection with zero score penalty."
                 ))
             else:
                 # Check if this document type historically requires a QR code

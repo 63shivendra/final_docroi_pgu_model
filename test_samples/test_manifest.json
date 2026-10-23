@@ -1,0 +1,128 @@
+{
+  "test_suite_name": "DocROI-Former PGU-v3 Forensic Evaluation Suite",
+  "version": "1.0",
+  "description": "Curated benchmark containing pristine authentic cards and surgical forgeries for Aadhaar and PAN.",
+  "samples": [
+    {
+      "id": "aadhaar_01_clean",
+      "file": "test_samples/aadhaar/aadhaar_01_clean_secure_qr.jpg",
+      "document_type": "AADHAAR_CARD",
+      "ground_truth": "GENUINE",
+      "tampering_type": "NONE",
+      "has_qr": true,
+      "description": "Authentic Aadhaar card with valid UIDAI Secure QR payload and valid Verhoeff checksum.",
+      "expected_verdict": "APPROVED",
+      "expected_trust_score": ">= 90%"
+    },
+    {
+      "id": "aadhaar_02_clean",
+      "file": "test_samples/aadhaar/aadhaar_02_clean_standard.jpg",
+      "document_type": "AADHAAR_CARD",
+      "ground_truth": "GENUINE",
+      "tampering_type": "NONE",
+      "has_qr": true,
+      "description": "Authentic full Aadhaar card layout with Government of India header and demographic fields.",
+      "expected_verdict": "APPROVED",
+      "expected_trust_score": ">= 85%"
+    },
+    {
+      "id": "aadhaar_03_tampered_name",
+      "file": "test_samples/aadhaar/aadhaar_03_tampered_name_text.jpg",
+      "mask_file": "test_samples/aadhaar/aadhaar_03_tampered_name_text_mask.png",
+      "document_type": "AADHAAR_CARD",
+      "ground_truth": "TAMPERED",
+      "tampering_type": "DIGITAL_TEXT_OVERLAY",
+      "tamper_bbox": [
+        250,
+        250,
+        170,
+        25
+      ],
+      "description": "Cardholder Name field digitally altered ('KUMAR S M'). QR payload does not match altered name.",
+      "expected_verdict": "FLAGGED / SUSPICIOUS",
+      "detection_layers": [
+        "Layer 3 QR Cross-Check (Visual Name vs QR Name mismatch)",
+        "Layer 4 PGU-v3 Neural Targeting Circle on Name box"
+      ]
+    },
+    {
+      "id": "aadhaar_04_tampered_uid",
+      "file": "test_samples/aadhaar/aadhaar_04_tampered_uid_checksum.jpg",
+      "mask_file": "test_samples/aadhaar/aadhaar_04_tampered_uid_checksum_mask.png",
+      "document_type": "AADHAAR_CARD",
+      "ground_truth": "TAMPERED",
+      "tampering_type": "SINGLE_DIGIT_CHECKSUM_TAMPER",
+      "tamper_bbox": [
+        345,
+        390,
+        30,
+        25
+      ],
+      "description": "Single digit altered in 12-digit Aadhaar number. Mathematical Verhoeff D5 checksum breaks.",
+      "expected_verdict": "REJECTED_VERHOEFF_CHECKSUM_FAILURE",
+      "detection_layers": [
+        "Layer 2 Verhoeff Mathematical Checksum",
+        "Layer 4 PGU-v3 Neural Targeting Circle on altered digit"
+      ]
+    },
+    {
+      "id": "pan_01_clean",
+      "file": "test_samples/pan/pan_01_clean_highres.jpg",
+      "document_type": "PAN_CARD",
+      "ground_truth": "GENUINE",
+      "tampering_type": "NONE",
+      "description": "Authentic high-resolution PAN card with standard 10-char alphanumeric structure, photo, and signature.",
+      "expected_verdict": "APPROVED",
+      "expected_trust_score": ">= 90%"
+    },
+    {
+      "id": "pan_02_clean",
+      "file": "test_samples/pan/pan_02_clean_standard.jpg",
+      "document_type": "PAN_CARD",
+      "ground_truth": "GENUINE",
+      "tampering_type": "NONE",
+      "description": "Authentic standard PAN card layout with Income Tax Department header.",
+      "expected_verdict": "APPROVED",
+      "expected_trust_score": ">= 85%"
+    },
+    {
+      "id": "pan_03_tampered_char",
+      "file": "test_samples/pan/pan_03_tampered_single_char.jpg",
+      "mask_file": "test_samples/pan/pan_03_tampered_single_char_mask.png",
+      "document_type": "PAN_CARD",
+      "ground_truth": "TAMPERED",
+      "tampering_type": "SINGLE_CHARACTER_ALTERATION",
+      "tamper_bbox": [
+        379,
+        350,
+        72,
+        40
+      ],
+      "description": "Surgical 1-character modification of PAN number (Individual 'P' altered to 'B').",
+      "expected_verdict": "FLAGGED / TAMPERED",
+      "detection_layers": [
+        "Layer 2 Structural Lexical Entity Mismatch",
+        "Layer 4 PGU-v3 Targeting Circle on altered character"
+      ]
+    },
+    {
+      "id": "pan_04_tampered_photo",
+      "file": "test_samples/pan/pan_04_tampered_photo_splice.jpg",
+      "mask_file": "test_samples/pan/pan_04_tampered_photo_splice_mask.png",
+      "document_type": "PAN_CARD",
+      "ground_truth": "TAMPERED",
+      "tampering_type": "PHOTO_BOX_SPLICING",
+      "tamper_bbox": [
+        854,
+        358,
+        261,
+        239
+      ],
+      "description": "Cardholder portrait photo replaced / spliced from different image source with boundary seam.",
+      "expected_verdict": "FLAGGED / SUSPICIOUS",
+      "detection_layers": [
+        "Layer 4 PGU-v3 Frequency Noise & Edge Seam Targeting Circle on photo box"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "total_documents_processed": 4372,
+  "decisions": {
+    "approved": {
+      "count": 2009,
+      "percentage": 45.95
+    },
+    "rejected": {
+      "count": 1862,
+      "percentage": 42.59
+    },
+    "escalated_to_human_review": {
+      "count": 501,
+      "percentage": 11.46
+    },
+    "all_breakdown": {
+      "APPROVED": 2009,
+      "REJECTED": 1721,
+      "ESCALATE_TO_HUMAN_REVIEW": 501,
+      "REJECTED_BLURRY_IMAGE": 141
+    }
+  },
+  "by_category": {
+    "adhaar_card": 2646,
+    "pan_card": 1726
+  },
+  "by_split": {
+    "test": 265,
+    "train": 3310,
+    "valid": 797
+  },
+  "performance": {
+    "avg_latency_sec": 0.415,
+    "min_latency_sec": 0.078,
+    "max_latency_sec": 5.669,
+    "p95_latency_sec": 0.989
+  },
+  "neural_metrics": {
+    "avg_peak_tamper_prob_pct": 46.87,
+    "docs_with_zero_tamper_pixels": 2348,
+    "docs_with_anomalies": 2024
+  },
+  "last_updated": "2026-10-23 16:03:17"
+}

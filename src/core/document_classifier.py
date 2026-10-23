@@ -108,7 +108,8 @@ class DocumentClassifier:
         self,
         image: np.ndarray,
         ocr_texts: Optional[List[str]] = None,
-        requested_doc_type: Optional[str] = None
+        requested_doc_type: Optional[str] = None,
+        qr_type: Optional[str] = None
     ) -> DocumentClassificationResult:
         """
         Classifies an input image and verifies if it matches the expected document type.
@@ -166,6 +167,16 @@ class DocumentClassifier:
             scores[DocumentCategory.AADHAAR_CARD] += 5.0
             scores[DocumentCategory.DRIVING_LICENSE] += 5.0
             scores[DocumentCategory.VOTER_ID] += 5.0
+
+        # 5.5 QR Cryptographic Signature Scoring
+        if qr_type:
+            detected_signals["qr_type"] = qr_type
+            if qr_type == "AADHAAR_SECURE":
+                scores[DocumentCategory.AADHAAR_CARD] += 50.0
+            elif qr_type == "PAN_ENHANCED":
+                scores[DocumentCategory.PAN_CARD] += 50.0
+            elif qr_type == "GST_IRN":
+                scores[DocumentCategory.GST_CERTIFICATE] += 50.0
 
         # Determine winner
         best_cat = max(scores, key=scores.get)

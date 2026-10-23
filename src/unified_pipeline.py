@@ -149,19 +149,19 @@ class UnifiedDocumentFraudPipeline:
     @staticmethod
     def extract_tamper_bounding_boxes(
         heatmap: np.ndarray,
-        threshold: float = 0.50,
-        min_pixels: int = 25,
+        threshold: float = 0.40,
+        min_pixels: int = 5,
         raw_tokens: Optional[List[Dict[str, Any]]] = None
     ) -> List[Dict[str, Any]]:
         """
-        Extracts discrete bounding boxes and contours around localized neural tamper clusters.
+        Extracts discrete bounding boxes, center coordinates, and contours around localized neural tamper clusters.
         Correlates each detected tamper zone with overlapping OCR entity text tokens.
         """
         if heatmap is None or heatmap.size == 0 or heatmap.max() < threshold:
             return []
 
         binary_mask = (heatmap >= threshold).astype(np.uint8) * 255
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (11, 11))
         binary_closed = cv2.morphologyEx(binary_mask, cv2.MORPH_CLOSE, kernel)
 
         contours, _ = cv2.findContours(binary_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -178,7 +178,12 @@ class UnifiedDocumentFraudPipeline:
 
             region_heatmap = heatmap[by:by+bh, bx:bx+bw]
             peak_prob = float(region_heatmap.max() * 100.0)
-            mean_prob = float(region_heatmap[region_mask > 0].mean() * 100.0)
+            mean_prob = float(region_heatmap[region_mask > 0].mean() * 100.0) if pixel_count > 0 else peak_prob
+
+            # Compute circle geometry
+            cx = int(bx + bw / 2.0)
+            cy = int(by + bh / 2.0)
+            radius = int(max(np.hypot(bw, bh) / 2.0 + 8.0, 18.0))
 
             # Correlate with OCR entity tokens if available
             associated_tokens = []
@@ -198,6 +203,8 @@ class UnifiedDocumentFraudPipeline:
             boxes.append({
                 "box_id": f"TAMPER_ZONE_{len(boxes) + 1}",
                 "box": [int(bx), int(by), int(bw), int(bh)],
+                "center": [cx, cy],
+                "radius": radius,
                 "peak_probability_pct": round(peak_prob, 1),
                 "mean_probability_pct": round(mean_prob, 1),
                 "tampered_pixels": pixel_count,
@@ -342,12 +349,48 @@ class UnifiedDocumentFraudPipeline:
                 print(f"[Warning] OCR extraction encountered error: {e}")
 
         # -------------------------------------------------------------
+        # STEP 2.1: 2D BARCODE / QR CODE CO-EXTRACTION & LOCALIZATION
+        # -------------------------------------------------------------
+        # When a document contains a QR code, both visual printed text from the whole
+        # document and cryptographic QR payload are co-extracted. The full document is preserved
+        # and forwarded to all subsequent layers (never just the isolated QR code).
+        qr_payloads = []
+        has_visual_qr = False
+        try:
+            qr_payloads, has_visual_qr = self.structural_engine._qr_validator.detect_and_decode(rectified_card)
+        except Exception as e:
+            print(f"[Warning] QR detection error: {e}")
+
+        if qr_payloads:
+            primary_payload = qr_payloads[0]
+            extracted_fields["has_qr"] = True
+            extracted_fields["qr_type"] = primary_payload.payload_type
+            extracted_fields["qr_is_signed"] = primary_payload.is_signed
+            extracted_fields["qr_data"] = primary_payload.extracted_fields
+            if primary_payload.cryptographic_hash:
+                extracted_fields["qr_hash"] = primary_payload.cryptographic_hash
+
+            # Add QR code bounding box to entity_boxes for neural fraud inspection
+            if primary_payload.bounding_box:
+                qbx, qby, qbw, qbh = primary_payload.bounding_box
+                entity_boxes.append((int(qbx), int(qby), int(qbw), int(qbh)))
+                if "raw_tokens" in extracted_fields:
+                    extracted_fields["raw_tokens"].append({
+                        "text": f"[QR CODE: {primary_payload.payload_type}]",
+                        "confidence": 1.0,
+                        "box": [int(qbx), int(qby), int(qbw), int(qbh)]
+                    })
+        else:
+            extracted_fields["has_qr"] = has_visual_qr
+
+        # -------------------------------------------------------------
         # STEP 2.5: DOCUMENT CLASSIFICATION & INTAKE GATEKEEPER (Step 0)
         # -------------------------------------------------------------
         classification = self.classifier.classify(
             image=rectified_card,
             ocr_texts=ocr_texts,
-            requested_doc_type=doc_type
+            requested_doc_type=doc_type,
+            qr_type=extracted_fields.get("qr_type")
         )
 
         # If doc_type was not specified, dynamically route to detected category
@@ -471,11 +514,37 @@ class UnifiedDocumentFraudPipeline:
                 else:
                     raw_heatmap_card = np.zeros((h_card, w_card), dtype=np.float32)
 
+            # Localize Portrait Photo Box & Signature Box into entity_boxes for full forensic scrutiny
+            photo_box = self.roi_masker.locate_photo_box(rectified_card, doc_type=doc_type)
+            if photo_box and photo_box not in entity_boxes:
+                entity_boxes.append(photo_box)
+                if "raw_tokens" in extracted_fields:
+                    extracted_fields["raw_tokens"].append({
+                        "text": "[PORTRAIT PHOTO BOX]",
+                        "confidence": 1.0,
+                        "box": list(photo_box)
+                    })
+
+            sig_box = self.roi_masker.locate_signature_box(rectified_card, doc_type=doc_type)
+            if sig_box and sig_box not in entity_boxes:
+                entity_boxes.append(sig_box)
+                if "raw_tokens" in extracted_fields:
+                    extracted_fields["raw_tokens"].append({
+                        "text": "[SIGNATURE STRIP]",
+                        "confidence": 1.0,
+                        "box": list(sig_box)
+                    })
+
             # Apply Perimeter Guardband (Erode cut edges)
             guarded_heatmap = self.guardband.apply(raw_heatmap_card, margin_percent=0.035)
 
-            # Apply Semantic RoI Gating (Focus on text and photo)
-            clean_heatmap = self.roi_masker.filter_heatmap(guarded_heatmap, entity_boxes=entity_boxes)
+            # Apply Strict Semantic RoI Gating: Zero out background paper noise (factor=0.0)
+            # Inspects strictly inside OCR word tokens, QR box, Photo box, and Signature strip
+            clean_heatmap = self.roi_masker.filter_heatmap(
+                guarded_heatmap,
+                entity_boxes=entity_boxes,
+                background_suppression_factor=0.0
+            )
 
             flagged_mask = (clean_heatmap > 0.50)
             tamper_pixels = int(flagged_mask.sum())
@@ -484,8 +553,8 @@ class UnifiedDocumentFraudPipeline:
             # Extract discrete connected component bounding boxes around each tamper cluster
             tamper_boxes = self.extract_tamper_bounding_boxes(
                 clean_heatmap,
-                threshold=0.50,
-                min_pixels=25,
+                threshold=0.40,
+                min_pixels=5,
                 raw_tokens=extracted_fields.get("raw_tokens", [])
             )
 

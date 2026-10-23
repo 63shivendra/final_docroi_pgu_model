@@ -15,14 +15,17 @@ test_sample_images/
 *aadhaar*.jpg
 *aadhaar*.png
 
-# Test outputs, scratch, and temporary dashboard
+# Test outputs, scratch, and temporary run directories
 scratch/
 reports/*_test_output/
-dashboard/
+testingrealpanaddahronnpipeline/visuals/
+testingrealpanaddahronnpipeline/reports/
 
 
-# Ensure all source code is always tracked
+# Ensure all source code and UI templates are always tracked
 !src/**
+!dashboard/**
+!dashboard/templates/**
 
 # ==========================================
 # HEAVY DATASETS & RAW FILES (>20GB)
